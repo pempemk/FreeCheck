@@ -1,0 +1,172 @@
+part of 'page.dart';
+
+const _palette = [
+  Color(0xFF6C5CE7),
+  Color(0xFF4FA37E),
+  Color(0xFFE0974B),
+  Color(0xFFD9636E),
+  Color(0xFF4A7BD6),
+  Color(0xFF4338CA),
+  Color(0xFFD16BA5),
+  Color(0xFF2FA4A9),
+];
+
+class OrganizerFormPage extends Page<void> {
+  OrganizerFormPage({required super.db});
+
+  final _orgName = TextEditingController();
+  final _contactName = TextEditingController();
+  final _phone = TextEditingController();
+  Color _color = _palette.first;
+
+  @override
+  void dispose() {
+    _orgName.dispose();
+    _contactName.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickCustomColor() async {
+    var picked = _color;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('เลือกสี'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: _color,
+            onColorChanged: (c) => picked = c,
+            enableAlpha: false,
+            hexInputBar: true,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ตกลง'),
+          ),
+        ],
+      ),
+    );
+    if (ok ?? false) setState(() => _color = picked.withAlpha(255));
+  }
+
+  Future<void> _save() async {
+    final organizer = await _run(
+      () => _organizers.createOrganizer({
+        'org_name': _orgName.text,
+        'contact_name': _contactName.text,
+        'phone': _phone.text,
+        'color': colorToHex(_color),
+      }),
+      success: 'บันทึก Organizer เรียบร้อยแล้ว',
+    );
+    if (organizer != null && mounted) Navigator.pop(context, organizer);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final custom = !_palette.any((c) => c.toARGB32() == _color.toARGB32());
+    return _screen(
+      context,
+      title: 'เพิ่ม Organizer',
+      subtitle: 'บันทึกข้อมูลผู้ว่าจ้างใหม่',
+      loading: _loading,
+      bottom: _primaryButton('บันทึก Organizer', _loading ? null : _save),
+      children: [
+        _fieldLabel('ชื่อบริษัท'),
+        TextField(
+          controller: _orgName,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            hintText: 'กรอกชื่อบริษัท / Organizer',
+            errorText: fieldErrors['org_name'],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _fieldLabel('ชื่อผู้ติดต่อ'),
+        TextField(
+          controller: _contactName,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            hintText: 'กรอกชื่อผู้ติดต่อ',
+            errorText: fieldErrors['contact_name'],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _fieldLabel('เบอร์โทรศัพท์'),
+        TextField(
+          controller: _phone,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [LengthLimitingTextInputFormatter(20)],
+          decoration: InputDecoration(
+            hintText: 'กรอกเบอร์โทรศัพท์',
+            errorText: fieldErrors['phone'],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _fieldLabel('สีประจำ Organizer'),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final c in _palette)
+              _swatch(
+                color: c,
+                selected: c.toARGB32() == _color.toARGB32(),
+                onTap: () => setState(() => _color = c),
+              ),
+            _swatch(
+              color: custom ? _color : Colors.white,
+              selected: custom,
+              onTap: _pickCustomColor,
+              tooltip: 'เลือกสีอื่น',
+              icon: Icons.palette_outlined,
+            ),
+          ],
+        ),
+        _fieldError(fieldErrors['color']),
+        const SizedBox(height: 20),
+        const Text(
+          'คะแนนเริ่มต้นของ Organizer จะเป็น 0',
+          style: TextStyle(color: _muted, fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  Widget _swatch({
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+    String? tooltip,
+    IconData? icon,
+  }) {
+    return Tooltip(
+      message: tooltip ?? colorToHex(color),
+      child: Material(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: selected
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 28)
+                : icon == null
+                ? null
+                : Icon(icon, color: _muted),
+          ),
+        ),
+      ),
+    );
+  }
+}
