@@ -139,7 +139,7 @@ class HomePage extends Page<_HomeData> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
           const Text(
-            'FREELANCE TRACKER',
+            'FreeCheck',
             style: TextStyle(
               color: _primary,
               fontWeight: FontWeight.w800,
