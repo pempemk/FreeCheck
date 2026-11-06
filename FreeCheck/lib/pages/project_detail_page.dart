@@ -69,11 +69,13 @@ class ProjectDetailPage extends Page<_Detail> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'เลือก Checklist',
-                style: TextStyle(
+                _project.checklists.isEmpty
+                    ? 'เลือก Checklist'
+                    : 'เปลี่ยนเป็น Checklist',
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: _ink,
@@ -106,15 +108,37 @@ class ProjectDetailPage extends Page<_Detail> {
     }
   }
 
+  /// Uses [type] as the project's checklist, replacing the current one
+  /// (a project has only one).
   Future<void> _addChecklist(Type type) async {
+    final current = {
+      for (final item in _project.checklists)
+        if (item.checklist != null) item.checklist!.typeId,
+    };
+    if (current.isNotEmpty) {
+      final ok = await _confirm(
+        context,
+        title: 'เปลี่ยน Checklist',
+        message:
+            'เปลี่ยนเป็น "${type.name}" ใช่หรือไม่ '
+            'ขั้นตอนและสถานะที่ติ๊กไว้ของอันเดิมจะหายไป',
+        confirmLabel: 'เปลี่ยน',
+      );
+      if (!ok) return;
+    }
     // Reload the project (for its progress) and the types (a new one may
     // have just been created).
     final result = await _run(() async {
+      for (final typeId in current) {
+        await _checklists.removeChecklistFromProject(_projectId, {
+          'type_id': typeId,
+        });
+      }
       await _checklists.addChecklistToProject(_projectId, {
         'type_id': type.typeId,
       });
       return (_projects.getProject(_projectId), _checklists.getTypes()).wait;
-    }, success: 'เพิ่ม "${type.name}" เรียบร้อยแล้ว');
+    }, success: 'ใช้ Checklist "${type.name}" เรียบร้อยแล้ว');
     if (result == null) return;
     final (project, types) = result;
     showData((project: project, types: types));
@@ -509,7 +533,9 @@ class ProjectDetailPage extends Page<_Detail> {
         if (editable) ...[
           const SizedBox(height: 6),
           _softButton(
-            '+ เพิ่ม Checklist',
+            project.checklists.isEmpty
+                ? '+ เพิ่ม Checklist'
+                : 'เปลี่ยน Checklist',
             _loading ? null : () => _pickChecklist(available),
           ),
         ],

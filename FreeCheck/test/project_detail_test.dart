@@ -56,7 +56,7 @@ void main() {
     expect(find.text('ออกแบบกราฟิก'), findsOneWidget);
     expect(find.byTooltip('ลบ Checklist นี้ออกจากงาน'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('+ เพิ่ม Checklist'),
+      find.text('เปลี่ยน Checklist'),
       200,
       scrollable: _page,
     );
@@ -186,5 +186,26 @@ void main() {
 
     expect(await db.select('projects', {}), hasLength(1));
     expect(find.text('รายละเอียดโปรเจกต์'), findsOneWidget);
+  });
+
+  testWidgets('changing the checklist replaces the old one', (tester) async {
+    final id = await project('in_progress');
+    await pumpPage(tester, () => ProjectDetailPage(projectId: id, db: db));
+
+    await tester.scrollUntilVisible(
+      find.text('เปลี่ยน Checklist'),
+      200,
+      scrollable: _page,
+    );
+    await tester.tap(find.text('เปลี่ยน Checklist'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('งานถ่ายภาพ'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'เปลี่ยน'));
+    await tester.pumpAndSettle();
+
+    final items = await seed.checklists.getProjectChecklists(id);
+    expect([for (final i in items) i.checklist!.name], ['ถ่ายภาพ']);
+    expect(items.single.completed, isFalse);
   });
 }

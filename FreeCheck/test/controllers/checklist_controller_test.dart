@@ -108,19 +108,6 @@ void main() {
       expect(items.every((i) => !i.completed), isTrue);
     });
 
-    test('adds a second type next to the first', () async {
-      final web = await type('Web', ['a', 'b']);
-      final logo = await type('Logo', ['c']);
-      await controller.addChecklistToProject(projectId, {
-        'type_id': web.typeId,
-      });
-
-      final items = await controller.addChecklistToProject(projectId, {
-        'type_id': logo.typeId,
-      });
-      expect([for (final i in items) i.checklist!.name], ['a', 'b', 'c']);
-    });
-
     test('throws 400 when type_id missing', () {
       expect(
         () => controller.addChecklistToProject(projectId, {}),
@@ -140,34 +127,53 @@ void main() {
       );
     });
 
-    test('throws 409 when every step of the type is already added', () async {
+    test('throws 409 when the project already has a checklist', () async {
       final web = await type('Web', ['a']);
+      final logo = await type('Logo', ['b']);
       await controller.addChecklistToProject(projectId, {
         'type_id': web.typeId,
       });
-      await expectLater(
-        controller.addChecklistToProject(projectId, {'type_id': web.typeId}),
-        throwsAppException(409),
-      );
+
+      for (final t in [web, logo]) {
+        await expectLater(
+          controller.addChecklistToProject(projectId, {'type_id': t.typeId}),
+          throwsAppException(409),
+        );
+      }
+      final items = await controller.getProjectChecklists(projectId);
+      expect([for (final i in items) i.checklist!.name], ['a']);
+    });
+
+    test('the checklist can be swapped after removing the old one', () async {
+      final web = await type('Web', ['a']);
+      final logo = await type('Logo', ['b']);
+      await controller.addChecklistToProject(projectId, {
+        'type_id': web.typeId,
+      });
+
+      await controller.removeChecklistFromProject(projectId, {
+        'type_id': web.typeId,
+      });
+      final items = await controller.addChecklistToProject(projectId, {
+        'type_id': logo.typeId,
+      });
+      expect([for (final i in items) i.checklist!.name], ['b']);
     });
   });
 
   group('removeChecklistFromProject', () {
-    test('removes only the steps of that type', () async {
+    test('removes the project checklist', () async {
       final web = await type('Web', ['a', 'b']);
-      final logo = await type('Logo', ['c']);
-      for (final t in [web, logo]) {
-        await controller.addChecklistToProject(projectId, {
-          'type_id': t.typeId,
-        });
-      }
+      await controller.addChecklistToProject(projectId, {
+        'type_id': web.typeId,
+      });
 
       await controller.removeChecklistFromProject(projectId, {
         'type_id': '${web.typeId}',
       });
 
-      final left = await controller.getProjectChecklists(projectId);
-      expect([for (final i in left) i.checklist!.name], ['c']);
+      expect(await controller.getProjectChecklists(projectId), isEmpty);
+      expect(await db.select('checklists', {}), hasLength(2));
     });
 
     test('throws 400 when type_id is missing or not a number', () {

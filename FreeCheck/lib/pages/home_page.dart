@@ -432,12 +432,13 @@ class HomePage extends Page<_HomeData> {
 
   /// Pick an open project to copy [type]'s steps into.
   Future<void> _applyTemplate(Type type, _HomeData d) async {
+    // A project has one checklist, so only projects without one qualify.
     final candidates = [
       for (final p in d.active)
-        if (!p.checklists.any((c) => c.checklist?.typeId == type.typeId)) p,
+        if (p.checklists.isEmpty) p,
     ];
     if (candidates.isEmpty) {
-      _alert.showMessage('ทุกโปรเจกต์ที่กำลังทำใช้ "${type.name}" อยู่แล้ว');
+      _alert.showMessage('ทุกโปรเจกต์ที่กำลังทำมี Checklist แล้ว');
       return;
     }
 

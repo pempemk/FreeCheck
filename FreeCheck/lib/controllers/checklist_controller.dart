@@ -187,7 +187,7 @@ class ChecklistController {
   }
 
   /// Copies the steps of a type into the project (completed = false).
-  /// A project may use several types; steps it already has are skipped.
+  /// A project has one checklist; to change it, remove the old one first.
   Future<List<ProjectChecklist>> addChecklistToProject(
     int projectId,
     Map<String, dynamic> body,
@@ -201,28 +201,19 @@ class ChecklistController {
     if (!await _db.exists('types', {'type_id': typeId})) {
       throw AppException.notFound('ไม่พบประเภทงานนี้');
     }
+    if (await _db.exists('project_checklists', {'project_id': projectId})) {
+      throw AppException.conflict(
+        'โปรเจกต์นี้มี Checklist แล้ว ต้องเอาอันเดิมออกก่อน',
+      );
+    }
 
     final steps = await _db.select(
       'checklists',
       {'type_id': typeId},
       columns: ['checklist_id'],
     );
-    final existing = await _db.select(
-      'project_checklists',
-      {'project_id': projectId},
-      columns: ['checklist_id'],
-    );
-    final existingIds = {for (final r in existing) r['checklist_id']};
-    final newSteps = [
-      for (final step in steps)
-        if (!existingIds.contains(step['checklist_id'])) step,
-    ];
-    if (newSteps.isEmpty) {
-      throw AppException.conflict('งานนี้มีขั้นตอนของ Checklist นี้ครบแล้ว');
-    }
-
     await _db.transaction((tx) async {
-      for (final step in newSteps) {
+      for (final step in steps) {
         await tx.insert('project_checklists', {
           'project_id': projectId,
           'checklist_id': step['checklist_id'],
