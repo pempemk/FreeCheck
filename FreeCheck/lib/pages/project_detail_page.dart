@@ -222,6 +222,19 @@ class ProjectDetailPage extends Page<_Detail> {
     if (await _rateFlow(_project)) await _refresh();
   }
 
+  Future<void> _delete() => _deleteFlow(
+    title: 'ลบโปรเจกต์',
+    message:
+        'ลบ "${_project.projectName}" พร้อม Checklist และคะแนนของงานนี้'
+        'ใช่หรือไม่ ลบแล้วกู้คืนไม่ได้',
+    delete: () => _projects.deleteProject(_projectId),
+  );
+
+  Future<void> _edit() async {
+    await _openPage(() => ProjectFormPage(db: _db, project: _project));
+    await _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = data;
@@ -374,6 +387,18 @@ class ProjectDetailPage extends Page<_Detail> {
           '${formatDateRange(project.startDate, deadline)}',
       loading: _loading,
       onRefresh: _refresh,
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (editable)
+            IconButton(
+              tooltip: 'แก้ไขโปรเจกต์',
+              onPressed: _loading ? null : _edit,
+              icon: const Icon(Icons.edit_outlined, color: _ink),
+            ),
+          _deleteButton('ลบโปรเจกต์', _loading ? null : _delete),
+        ],
+      ),
       bottom: _detailAction(project),
       children: [
         _surface(
@@ -542,11 +567,32 @@ class ProjectDetailPage extends Page<_Detail> {
     );
   }
 
+  /// Submitting is only possible once every checklist step is done.
+  Widget _submitAction(Project project) {
+    final ready = project.checklists.isNotEmpty && project.progress >= 100;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!ready)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              project.checklists.isEmpty
+                  ? 'เพิ่ม Checklist ก่อนส่งงาน'
+                  : 'ทำ Checklist ให้ครบ 100% ก่อนส่งงาน',
+              style: const TextStyle(color: _muted),
+            ),
+          ),
+        _primaryButton(
+          'ส่งงานให้ Organizer',
+          ready && !_loading ? _submit : null,
+        ),
+      ],
+    );
+  }
+
   Widget? _detailAction(Project project) => switch (project.status) {
-    ProjectStatus.inProgress => _primaryButton(
-      'ส่งงานให้ Organizer',
-      _loading ? null : _submit,
-    ),
+    ProjectStatus.inProgress => _submitAction(project),
     ProjectStatus.submitted => _primaryButton(
       'ยืนยันรับเงิน',
       _loading ? null : _confirmPayment,

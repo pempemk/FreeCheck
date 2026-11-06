@@ -6,6 +6,8 @@ import 'package:freelance_tracker/controllers/project_controller.dart';
 import 'package:freelance_tracker/pages/page.dart';
 import 'package:freelance_tracker/services/database_service.dart';
 
+import 'support.dart';
+
 /// Sample data built through the controllers, like a user would.
 class Seed {
   Seed(this.db)
@@ -54,6 +56,7 @@ class Seed {
       }
     }
     const order = ['in_progress', 'pending', 'submitted', 'completed'];
+    if (status != 'in_progress') await readyToSubmit(db, id);
     final steps = [
       projects.submitProject,
       projects.passProject,
@@ -75,5 +78,35 @@ Future<void> pumpPage(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(MaterialApp(theme: appTheme(), home: hostPage(page)));
+  await tester.pumpAndSettle();
+}
+
+/// Opens [page] on top of a plain start screen (with an "open" button), so
+/// tests can check that the page closes itself.
+Future<void> pumpPushed(
+  WidgetTester tester,
+  Page<Object?> Function() page,
+) async {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: appTheme(),
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => hostPage(page))),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
 }

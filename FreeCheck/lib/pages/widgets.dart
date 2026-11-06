@@ -3,7 +3,6 @@ part of 'page.dart';
 // Design tokens and small building blocks shared by the pages.
 
 const _primary = Color(0xFF6C5CE7);
-const _indigo = Color(0xFF4338CA);
 const _ink = Color(0xFF1E2140);
 const _muted = Color(0xFF8A8FA8);
 const _background = Color(0xFFF5F6FB);
@@ -80,10 +79,6 @@ ThemeData appTheme() {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 }
@@ -171,6 +166,7 @@ Widget _header(
   required String title,
   String? subtitle,
   bool back = true,
+  Widget? action,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,6 +192,7 @@ Widget _header(
               ),
             ),
           ),
+          ?action,
         ],
       ),
       if (subtitle != null)
@@ -220,11 +217,18 @@ Widget _screenBody(
   bool back = true,
   bool loading = false,
   RefreshCallback? onRefresh,
+  Widget? action,
 }) {
   Widget list = ListView(
     padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
     children: [
-      _header(context, title: title, subtitle: subtitle, back: back),
+      _header(
+        context,
+        title: title,
+        subtitle: subtitle,
+        back: back,
+        action: action,
+      ),
       const SizedBox(height: 24),
       ...children,
     ],
@@ -257,6 +261,7 @@ Widget _screen(
   Widget? bottom,
   bool loading = false,
   RefreshCallback? onRefresh,
+  Widget? action,
 }) {
   return Scaffold(
     body: SafeArea(
@@ -267,6 +272,7 @@ Widget _screen(
         bottom: bottom,
         loading: loading,
         onRefresh: onRefresh,
+        action: action,
         children: children,
       ),
     ),
@@ -463,6 +469,93 @@ Widget _projectCard(
   );
 }
 
+/// Money received and money still waiting to be paid, side by side.
+Widget _financeCard({
+  required num earned,
+  required num awaiting,
+  required int awaitingCount,
+  String? note,
+  VoidCallback? onTap,
+}) {
+  const label = TextStyle(color: Colors.white70, fontSize: 14);
+  return _surface(
+    color: _primary,
+    radius: 28,
+    padding: const EdgeInsets.all(24),
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Text('รายได้ที่ได้รับแล้ว', style: label)),
+            if (onTap != null)
+              const Icon(Icons.chevron_right, color: Colors.white70),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          formatBaht(earned),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (note != null) ...[
+          const SizedBox(height: 4),
+          Text(note, style: const TextStyle(color: Colors.white)),
+        ],
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(36),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.schedule_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ยอดรอรับเงิน', style: label),
+                    Text(
+                      '$awaitingCount โปรเจกต์ที่รอชำระเงิน',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                formatBaht(awaiting),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Trash icon for the header of screens that can delete what they show.
+Widget _deleteButton(String tooltip, VoidCallback? onPressed) => IconButton(
+  tooltip: tooltip,
+  onPressed: onPressed,
+  icon: const Icon(Icons.delete_outline_rounded, color: _red),
+);
+
 /// Rounded square with the organizer's initial in its color.
 Widget _organizerAvatar(Organizer organizer, {double size = 64}) {
   final name = organizer.orgName.trim();
@@ -600,6 +693,7 @@ Future<bool> _confirm(
   required String title,
   String? message,
   String confirmLabel = 'ยืนยัน',
+  bool destructive = false,
 }) async {
   final result = await showDialog<bool>(
     context: context,
@@ -613,6 +707,9 @@ Future<bool> _confirm(
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
+          style: destructive
+              ? FilledButton.styleFrom(backgroundColor: _red)
+              : null,
           child: Text(confirmLabel),
         ),
       ],

@@ -30,7 +30,7 @@ const _unexpectedError = 'เกิดข้อผิดพลาด กรุ�
 
 /// The whole app, sharing one open [db] between all pages.
 Widget buildApp(DatabaseService db) => MaterialApp(
-  title: 'Freelance Tracker',
+  title: 'FreeCheck',
   debugShowCheckedModeBanner: false,
   theme: appTheme(),
   locale: const Locale('th'),
@@ -172,6 +172,27 @@ abstract class Page<D> extends State<StatefulWidget> {
       child: _buildLoaded((_) => const SizedBox.shrink(), onRetry: onRetry),
     ),
   );
+
+  /// Asks before running [delete]; closes the screen once it succeeds.
+  Future<void> _deleteFlow({
+    required String title,
+    required String message,
+    required Future<void> Function() delete,
+  }) async {
+    final ok = await _confirm(
+      context,
+      title: title,
+      message: message,
+      confirmLabel: 'ลบ',
+      destructive: true,
+    );
+    if (!ok) return;
+    final deleted = await _run(() async {
+      await delete();
+      return true;
+    }, success: 'ลบเรียบร้อยแล้ว');
+    if ((deleted ?? false) && mounted) Navigator.pop(context, true);
+  }
 
   /// Confirm payment, then offer to rate the organizer.
   /// Returns the updated project, or `null` when cancelled or failed.

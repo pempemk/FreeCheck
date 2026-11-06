@@ -34,8 +34,7 @@ class ChecklistController {
       errors['steps'] = 'ต้องมีขั้นตอนอย่างน้อย 1 รายการ';
     } else {
       for (var i = 0; i < steps.length; i++) {
-        final step = steps[i];
-        final text = step is String ? textOf(step) : null;
+        final text = _stepName(steps[i]);
         if (text == null) {
           errors['steps.$i'] = 'กรุณากรอกชื่อขั้นตอน';
         } else if (text.length > 255) {
@@ -75,6 +74,98 @@ class ChecklistController {
       }
     });
     return Type(typeId: typeId, name: name, checklists: created);
+  }
+
+  /// Renames a type and its steps, adds new steps and removes steps that no
+  /// project uses. Each step is a name (new step) or
+  /// `{'checklist_id': id, 'name': name}` (existing step).
+  Future<Type> editChecklist(int typeId, Map<String, dynamic> body) async {
+    final errors = validate(body);
+    if (errors.isNotEmpty) throw AppException.validation(errors);
+
+    if (!await _db.exists('types', {'type_id': typeId})) {
+      throw AppException.notFound('ไม่พบประเภทงานนี้');
+    }
+    final name = textOf(body['name'])!;
+    final sameName = await _db.select('types', {'name': name});
+    if (sameName.any((t) => t['type_id'] != typeId)) {
+      throw AppException.conflict(
+        'มีประเภทงานชื่อนี้อยู่แล้ว',
+        fields: {'name': 'มีประเภทงานชื่อนี้อยู่แล้ว'},
+      );
+    }
+
+    final current = {
+      for (final row in await _db.select('checklists', {'type_id': typeId}))
+        row['checklist_id'] as int: row['name'] as String,
+    };
+    final steps = [
+      for (final step in body['steps'] as List)
+        (
+          id: step is Map ? intOf(step['checklist_id']) : null,
+          name: _stepName(step)!,
+        ),
+    ];
+    final kept = {for (final step in steps) step.id};
+    for (final id in current.keys.where((id) => !kept.contains(id))) {
+      if (await _db.exists('project_checklists', {'checklist_id': id})) {
+        throw AppException.conflict(
+          'ลบขั้นตอน "${current[id]}" ไม่ได้ เพราะมีโปรเจกต์ใช้อยู่',
+          fields: {
+            'steps': 'ลบขั้นตอน "${current[id]}" ไม่ได้ เพราะมีโปรเจกต์ใช้อยู่',
+          },
+        );
+      }
+    }
+
+    await _db.transaction((tx) async {
+      await tx.update('types', {'type_id': typeId}, {'name': name});
+      for (final step in steps) {
+        if (step.id != null && current.containsKey(step.id)) {
+          await tx.update(
+            'checklists',
+            {'checklist_id': step.id},
+            {'name': step.name},
+          );
+        } else {
+          await tx.insert('checklists', {
+            'type_id': typeId,
+            'name': step.name,
+          }, idColumn: 'checklist_id');
+        }
+      }
+      final removed = [
+        for (final id in current.keys)
+          if (!kept.contains(id)) id,
+      ];
+      if (removed.isNotEmpty) {
+        await tx.delete('checklists', {'checklist_id': removed});
+      }
+    });
+    return (await getTypes()).firstWhere((t) => t.typeId == typeId);
+  }
+
+  /// Deletes a checklist type and its steps when no project uses them.
+  Future<void> deleteChecklist(int typeId) async {
+    if (!await _db.exists('types', {'type_id': typeId})) {
+      throw AppException.notFound('ไม่พบประเภทงานนี้');
+    }
+    final steps = await _db.select(
+      'checklists',
+      {'type_id': typeId},
+      columns: ['checklist_id'],
+    );
+    final ids = [for (final s in steps) s['checklist_id']];
+    if (ids.isNotEmpty &&
+        await _db.exists('project_checklists', {'checklist_id': ids})) {
+      throw AppException.conflict(
+        'มีโปรเจกต์ใช้ Checklist นี้อยู่ ต้องเอาออกจากโปรเจกต์ก่อน',
+      );
+    }
+    await _db.transaction((tx) async {
+      await tx.delete('checklists', {'type_id': typeId});
+      await tx.delete('types', {'type_id': typeId});
+    });
   }
 
   Future<List<Type>> getTypes() async {
@@ -216,6 +307,13 @@ class ChecklistController {
     final rows = await _db.query(_progressSql, [projectId]);
     return rows.first['progress_percent'] as num;
   }
+
+  /// A step's name, whether given as text or as `{'name': ...}`.
+  String? _stepName(Object? step) => switch (step) {
+    String() => textOf(step),
+    Map() => step['name'] is String ? textOf(step['name']) : null,
+    _ => null,
+  };
 
   Future<void> _requireOpenProject(int projectId) async {
     final rows = await _db.select('projects', {'project_id': projectId});

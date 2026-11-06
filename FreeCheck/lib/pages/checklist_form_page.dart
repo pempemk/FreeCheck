@@ -1,36 +1,65 @@
 part of 'page.dart';
 
+/// Creates a checklist template, or edits [type] when given.
 class ChecklistFormPage extends Page<void> {
-  ChecklistFormPage({required super.db});
+  ChecklistFormPage({required super.db, Type? type}) : _editing = type;
 
-  final _name = TextEditingController();
-  final _steps = [TextEditingController()];
+  final Type? _editing;
+  late final _name = TextEditingController(text: _editing?.name);
+
+  /// Each row keeps the id of the step it edits; null for new steps.
+  late final _steps = <({int? id, TextEditingController text})>[
+    for (final c in _editing?.checklists ?? const <Checklist>[])
+      (id: c.checklistId, text: TextEditingController(text: c.name)),
+    if (_editing == null || _editing.checklists.isEmpty)
+      (id: null, text: TextEditingController()),
+  ];
 
   @override
   void dispose() {
     _name.dispose();
     for (final s in _steps) {
-      s.dispose();
+      s.text.dispose();
     }
     super.dispose();
   }
 
-  void _addStep() => setState(() => _steps.add(TextEditingController()));
+  void _addStep() =>
+      setState(() => _steps.add((id: null, text: TextEditingController())));
 
   void _removeStep(int index) {
     setState(() {
-      _steps.removeAt(index).dispose();
+      _steps.removeAt(index).text.dispose();
       // Indexed errors no longer line up with the rows.
       fieldErrors = const {};
     });
   }
 
+  Future<void> _delete() => _deleteFlow(
+    title: 'ลบ Checklist',
+    message:
+        'ลบ "${_editing!.name}" และขั้นตอนทั้งหมดใช่หรือไม่ '
+        'ลบแล้วกู้คืนไม่ได้',
+    delete: () => _checklists.deleteChecklist(_editing.typeId),
+  );
+
   Future<void> _save() async {
+    final editing = _editing;
     final type = await _run(
-      () => _checklists.createChecklist({
-        'name': _name.text,
-        'steps': [for (final s in _steps) s.text],
-      }),
+      () => editing == null
+          ? _checklists.createChecklist({
+              'name': _name.text,
+              'steps': [for (final s in _steps) s.text.text],
+            })
+          : _checklists.editChecklist(editing.typeId, {
+              'name': _name.text,
+              'steps': [
+                for (final s in _steps)
+                  s.id == null
+                      ? s.text.text
+                      : {'checklist_id': s.id, 'name': s.text.text},
+              ],
+            }),
       success: 'บันทึก Checklist เรียบร้อยแล้ว',
     );
     if (type != null && mounted) Navigator.pop(context, type);
@@ -40,10 +69,18 @@ class ChecklistFormPage extends Page<void> {
   Widget build(BuildContext context) {
     return _screen(
       context,
-      title: 'สร้าง Checklist ใหม่',
-      subtitle: 'กำหนดขั้นตอนการทำงาน',
+      title: _editing == null ? 'สร้าง Checklist ใหม่' : 'แก้ไข Checklist',
+      subtitle: _editing == null
+          ? 'กำหนดขั้นตอนการทำงาน'
+          : 'ขั้นตอนที่มีโปรเจกต์ใช้อยู่จะลบไม่ได้',
       loading: _loading,
-      bottom: _primaryButton('บันทึก Checklist', _loading ? null : _save),
+      action: _editing == null
+          ? null
+          : _deleteButton('ลบ Checklist', _loading ? null : _delete),
+      bottom: _primaryButton(
+        _editing == null ? 'บันทึก Checklist' : 'บันทึกการแก้ไข',
+        _loading ? null : _save,
+      ),
       children: [
         _fieldLabel('ประเภทงาน'),
         TextField(
@@ -59,7 +96,7 @@ class ChecklistFormPage extends Page<void> {
         const SizedBox(height: 12),
         for (var i = 0; i < _steps.length; i++)
           Padding(
-            key: ObjectKey(_steps[i]),
+            key: ObjectKey(_steps[i].text),
             padding: const EdgeInsets.only(bottom: 10),
             child: _stepRow(i),
           ),
@@ -70,7 +107,6 @@ class ChecklistFormPage extends Page<void> {
   }
 
   Widget _stepRow(int i) {
-    final error = fieldErrors['steps.$i'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,7 +134,7 @@ class ChecklistFormPage extends Page<void> {
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  controller: _steps[i],
+                  controller: _steps[i].text,
                   textInputAction: i == _steps.length - 1
                       ? TextInputAction.done
                       : TextInputAction.next,
@@ -119,7 +155,7 @@ class ChecklistFormPage extends Page<void> {
             ],
           ),
         ),
-        _fieldError(error),
+        _fieldError(fieldErrors['steps.$i']),
       ],
     );
   }

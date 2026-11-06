@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freelance_tracker/controllers/organizer_controller.dart';
+import 'package:freelance_tracker/controllers/project_controller.dart';
 import 'package:freelance_tracker/services/database_service.dart';
 
 import '../support.dart';
@@ -43,6 +44,14 @@ void main() {
           reason: name,
         );
       }
+    });
+
+    test('phone is at most 10 digits', () {
+      expect(controller.validate({...valid, 'phone': '0812345678'}), isEmpty);
+      expect(
+        controller.validate({...valid, 'phone': '08123456789'}),
+        contains('phone'),
+      );
     });
 
     test('fails when phone is not digits only', () {
@@ -97,5 +106,75 @@ void main() {
 
     final organizers = await controller.getOrganizers();
     expect([for (final o in organizers) o.orgName], ['Alpha', 'Zeta']);
+  });
+
+  group('updateOrganizer', () {
+    test('saves new values and keeps the rate', () async {
+      final org = await controller.createOrganizer(valid);
+      await db.update('organizers', {'org_id': org.orgId}, {'rate': 4.5});
+
+      final updated = await controller.updateOrganizer(org.orgId, {
+        ...valid,
+        'org_name': 'ACME Studio',
+        'color': '#00ff00',
+      });
+
+      expect(updated.orgName, 'ACME Studio');
+      expect(updated.color, '#00FF00');
+      expect(updated.rate, 4.5);
+    });
+
+    test('keeps its own name but rejects another organizer\'s', () async {
+      final org = await controller.createOrganizer(valid);
+      await controller.createOrganizer({...valid, 'org_name': 'Other'});
+
+      await controller.updateOrganizer(org.orgId, valid);
+      await expectLater(
+        controller.updateOrganizer(org.orgId, {...valid, 'org_name': 'Other'}),
+        throwsAppException(409, field: 'org_name'),
+      );
+    });
+
+    test('throws 400 when invalid and 404 when missing', () async {
+      final org = await controller.createOrganizer(valid);
+      await expectLater(
+        controller.updateOrganizer(org.orgId, {...valid, 'phone': 'abc'}),
+        throwsAppException(400, field: 'phone'),
+      );
+      await expectLater(
+        controller.updateOrganizer(99, valid),
+        throwsAppException(404),
+      );
+    });
+  });
+
+  group('deleteOrganizer', () {
+    test('deletes an organizer without projects', () async {
+      final org = await controller.createOrganizer(valid);
+      await controller.deleteOrganizer(org.orgId);
+      expect(await db.select('organizers', {}), isEmpty);
+    });
+
+    test('throws 409 while the organizer still has projects', () async {
+      final org = await controller.createOrganizer(valid);
+      await ProjectController(db).createProject({
+        'project_name': 'Website',
+        'org_id': org.orgId,
+        'start_date': '2026-10-01',
+        'wages': 1000,
+      });
+      await expectLater(
+        controller.deleteOrganizer(org.orgId),
+        throwsAppException(409),
+      );
+      expect(await db.select('organizers', {}), hasLength(1));
+    });
+
+    test('throws 404 when missing', () async {
+      await expectLater(
+        controller.deleteOrganizer(99),
+        throwsAppException(404),
+      );
+    });
   });
 }

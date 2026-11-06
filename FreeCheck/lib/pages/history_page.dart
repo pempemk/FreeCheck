@@ -56,33 +56,10 @@ class HistoryPage extends Page<_History> {
       loading: _loading,
       onRefresh: _refresh,
       children: [
-        _surface(
-          color: _indigo,
-          radius: 28,
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'ยอดรอรับเงิน',
-                style: TextStyle(color: Colors.white70, fontSize: 15),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                formatBaht(waiting),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 38,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${d.awaiting.length} โปรเจกต์ที่รอชำระเงิน',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
-          ),
+        _financeCard(
+          earned: earned,
+          awaiting: waiting,
+          awaitingCount: d.awaiting.length,
         ),
         const SizedBox(height: 32),
         _sectionTitle('รอรับเงิน'),
@@ -115,18 +92,7 @@ class HistoryPage extends Page<_History> {
           const SizedBox(height: 16),
         ],
         const SizedBox(height: 16),
-        _sectionTitle(
-          'ประวัติงานที่เสร็จสิ้น',
-          trailing: d.done.isEmpty
-              ? null
-              : Text(
-                  'รวม ${formatBaht(earned)}',
-                  style: const TextStyle(
-                    color: _green,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-        ),
+        _sectionTitle('ประวัติงานที่เสร็จสิ้น'),
         const SizedBox(height: 14),
         if (d.done.isEmpty)
           _emptyCard(

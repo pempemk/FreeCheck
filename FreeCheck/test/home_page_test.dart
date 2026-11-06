@@ -36,7 +36,9 @@ void main() {
   ) async {
     await pumpPage(tester, () => HomePage(db: db));
 
-    // Dashboard: income from completed work and counts per status.
+    // Dashboard: money received and money waiting, in one card.
+    expect(find.text('รายได้ที่ได้รับแล้ว'), findsOneWidget);
+    expect(find.text('ยอดรอรับเงิน'), findsOneWidget);
     expect(find.text('฿ 12,000'), findsOneWidget);
     expect(find.text('01'), findsNWidgets(3));
     expect(find.text('ออกแบบโปสเตอร์ Event'), findsOneWidget);

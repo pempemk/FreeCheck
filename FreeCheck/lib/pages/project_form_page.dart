@@ -1,13 +1,22 @@
 part of 'page.dart';
 
+/// Registers a new project, or edits [project] when given.
 class ProjectFormPage extends Page<List<Organizer>> {
-  ProjectFormPage({required super.db});
+  ProjectFormPage({required super.db, Project? project}) : _editing = project;
 
-  final _name = TextEditingController();
-  final _wages = TextEditingController();
-  int? _orgId;
-  DateTime? _startDate = DateUtils.dateOnly(DateTime.now());
-  DateTime? _deadline;
+  final Project? _editing;
+  late final _name = TextEditingController(text: _editing?.projectName);
+  late final _wages = TextEditingController(
+    text: switch (_editing?.wages) {
+      null => null,
+      final w when w == w.roundToDouble() => w.round().toString(),
+      final w => w.toString(),
+    },
+  );
+  late int? _orgId = _editing?.orgId;
+  late DateTime? _startDate =
+      _editing?.startDate ?? DateUtils.dateOnly(DateTime.now());
+  late DateTime? _deadline = _editing?.deadline;
 
   @override
   void initState() {
@@ -41,14 +50,18 @@ class ProjectFormPage extends Page<List<Organizer>> {
   }
 
   Future<void> _save() async {
+    final body = {
+      'project_name': _name.text,
+      'org_id': _orgId,
+      'start_date': _startDate == null ? null : toApiDate(_startDate!),
+      'deadline': _deadline == null ? null : toApiDate(_deadline!),
+      'wages': _wages.text.replaceAll(',', ''),
+    };
+    final editing = _editing;
     final project = await _run(
-      () => _projects.createProject({
-        'project_name': _name.text,
-        'org_id': _orgId,
-        'start_date': _startDate == null ? null : toApiDate(_startDate!),
-        'deadline': _deadline == null ? null : toApiDate(_deadline!),
-        'wages': _wages.text.replaceAll(',', ''),
-      }),
+      () => editing == null
+          ? _projects.createProject(body)
+          : _projects.updateProject(editing.projectId, body),
       success: 'บันทึกโปรเจกต์เรียบร้อยแล้ว',
     );
     if (project != null && mounted) Navigator.pop(context, project);
@@ -61,10 +74,15 @@ class ProjectFormPage extends Page<List<Organizer>> {
 
     return _screen(
       context,
-      title: 'เพิ่มโปรเจกต์ใหม่',
-      subtitle: 'บันทึกรายละเอียดงานที่ได้รับ',
+      title: _editing == null ? 'เพิ่มโปรเจกต์ใหม่' : 'แก้ไขโปรเจกต์',
+      subtitle: _editing == null
+          ? 'บันทึกรายละเอียดงานที่ได้รับ'
+          : 'แก้ไขรายละเอียดงาน',
       loading: _loading,
-      bottom: _primaryButton('บันทึกโปรเจกต์', _loading ? null : _save),
+      bottom: _primaryButton(
+        _editing == null ? 'บันทึกโปรเจกต์' : 'บันทึกการแก้ไข',
+        _loading ? null : _save,
+      ),
       children: [
         _fieldLabel('ชื่อโปรเจกต์'),
         TextField(
@@ -152,24 +170,26 @@ class ProjectFormPage extends Page<List<Organizer>> {
             errorText: fieldErrors['wages'],
           ),
         ),
-        const SizedBox(height: 24),
-        _surface(
-          color: _purpleSoft,
-          radius: 16,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, size: 18, color: _primary),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'หลังบันทึก สถานะเริ่มต้นคือ “กำลังทำ”',
-                  style: TextStyle(color: _primary),
+        if (_editing == null) ...[
+          const SizedBox(height: 24),
+          _surface(
+            color: _purpleSoft,
+            radius: 16,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, size: 18, color: _primary),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'หลังบันทึก สถานะเริ่มต้นคือ “กำลังทำ”',
+                    style: TextStyle(color: _primary),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

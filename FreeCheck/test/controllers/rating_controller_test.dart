@@ -20,6 +20,7 @@ void main() {
       'wages': 1000,
     })).projectId;
     if (complete) {
+      await readyToSubmit(db, id);
       await projects.submitProject(id);
       await projects.passProject(id);
       await projects.confirmPayment(id);

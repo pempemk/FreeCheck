@@ -64,6 +64,16 @@ class HomePage extends Page<_HomeData> {
     await _refresh();
   }
 
+  Future<void> _editOrganizer(Organizer organizer) async {
+    await _openPage(() => OrganizerFormPage(db: _db, organizer: organizer));
+    await _refresh();
+  }
+
+  Future<void> _editTemplate(Type type) async {
+    await _openPage(() => ChecklistFormPage(db: _db, type: type));
+    await _refresh();
+  }
+
   void _showProjects({ProjectStatus? status}) => setState(() {
     _tab = 1;
     _statusFilter = status;
@@ -95,32 +105,36 @@ class HomePage extends Page<_HomeData> {
               child: const Icon(Icons.add, size: 32),
             )
           : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'หน้าแรก',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.view_list_outlined),
-            selectedIcon: Icon(Icons.view_list_rounded),
-            label: 'โปรเจกต์',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_on_outlined),
-            selectedIcon: Icon(Icons.grid_on_rounded),
-            label: 'เช็กลิสต์',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'ลูกค้า',
-          ),
-        ],
-      ),
+      bottomNavigationBar: _navigationBar(),
+    );
+  }
+
+  Widget _navigationBar() {
+    return NavigationBar(
+      selectedIndex: _tab,
+      onDestinationSelected: (i) => setState(() => _tab = i),
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: 'หน้าแรก',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.view_list_outlined),
+          selectedIcon: Icon(Icons.view_list_rounded),
+          label: 'โปรเจกต์',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.grid_on_outlined),
+          selectedIcon: Icon(Icons.grid_on_rounded),
+          label: 'เช็กลิสต์',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          selectedIcon: Icon(Icons.person_rounded),
+          label: 'ลูกค้า',
+        ),
+      ],
     );
   }
 
@@ -132,6 +146,10 @@ class HomePage extends Page<_HomeData> {
     final pending = d.active
         .where((p) => p.status == ProjectStatus.pending)
         .length;
+    final awaiting = [
+      for (final p in d.active)
+        if (p.status == ProjectStatus.submitted) p,
+    ];
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -161,41 +179,12 @@ class HomePage extends Page<_HomeData> {
             style: TextStyle(color: _muted),
           ),
           const SizedBox(height: 20),
-          _surface(
-            color: _primary,
-            radius: 28,
-            padding: const EdgeInsets.all(28),
+          _financeCard(
+            earned: total,
+            awaiting: awaiting.fold<num>(0, (sum, p) => sum + p.wages),
+            awaitingCount: awaiting.length,
+            note: _incomeTrend(d.history),
             onTap: _openHistory,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'รายได้จากงานทั้งหมด',
-                        style: TextStyle(color: Colors.white70, fontSize: 15),
-                      ),
-                    ),
-                    Icon(Icons.chevron_right, color: Colors.white70),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  formatBaht(total),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 40,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _incomeTrend(d.history),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -396,6 +385,7 @@ class HomePage extends Page<_HomeData> {
         for (final t in d.types) ...[
           _surface(
             padding: const EdgeInsets.all(24),
+            onTap: _loading ? null : () => _editTemplate(t),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -413,11 +403,23 @@ class HomePage extends Page<_HomeData> {
                   style: const TextStyle(color: _muted),
                 ),
                 const SizedBox(height: 12),
-                _pill(
-                  'เลือกใช้งาน →',
-                  color: _primary,
-                  background: _purpleSoft,
-                  onTap: _loading ? null : () => _applyTemplate(t, d),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _pill(
+                      'เลือกใช้งาน →',
+                      color: _primary,
+                      background: _purpleSoft,
+                      onTap: _loading ? null : () => _applyTemplate(t, d),
+                    ),
+                    _pill(
+                      'แก้ไข',
+                      color: _muted,
+                      background: _greySoft,
+                      onTap: _loading ? null : () => _editTemplate(t),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -521,6 +523,7 @@ class HomePage extends Page<_HomeData> {
         for (final o in shown) ...[
           _surface(
             padding: const EdgeInsets.all(24),
+            onTap: () => _editOrganizer(o),
             child: Row(
               children: [
                 _organizerAvatar(o),
@@ -553,6 +556,7 @@ class HomePage extends Page<_HomeData> {
                     ],
                   ),
                 ),
+                const Icon(Icons.edit_outlined, color: _muted),
               ],
             ),
           ),

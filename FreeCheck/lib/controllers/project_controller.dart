@@ -79,28 +79,81 @@ LEFT JOIN (
     final errors = validate(body);
     if (errors.isNotEmpty) throw AppException.validation(errors);
 
-    final name = textOf(body['project_name'])!;
-    final orgId = intOf(body['org_id'])!;
+    final data = _fields(body);
+    await _checkOrganizerAndName(data);
+    final id = await _db.insert('projects', {
+      ...data,
+      'status': ProjectStatus.inProgress.value,
+    }, idColumn: 'project_id');
+    return getProject(id);
+  }
 
-    if (!await _db.exists('organizers', {'org_id': orgId})) {
+  /// Saves new details for a project that is not completed yet.
+  Future<Project> updateProject(int id, Map<String, dynamic> body) async {
+    final errors = validate(body);
+    if (errors.isNotEmpty) throw AppException.validation(errors);
+
+    final project = await getProject(id);
+    if (project.status == ProjectStatus.completed) {
+      throw AppException.conflict('งานที่เสร็จสิ้นแล้วแก้ไขไม่ได้');
+    }
+    final data = _fields(body);
+    await _checkOrganizerAndName(data, exceptId: id);
+    await _db.update('projects', {'project_id': id}, data);
+    return getProject(id);
+  }
+
+  Map<String, Object?> _fields(Map<String, dynamic> body) => {
+    'project_name': textOf(body['project_name']),
+    'org_id': intOf(body['org_id']),
+    'start_date': textOf(body['start_date']),
+    'deadline': textOf(body['deadline']),
+    'wages': numOf(body['wages']),
+  };
+
+  /// The organizer must exist, and its projects must have distinct names.
+  Future<void> _checkOrganizerAndName(
+    Map<String, Object?> data, {
+    int? exceptId,
+  }) async {
+    if (!await _db.exists('organizers', {'org_id': data['org_id']})) {
       throw AppException.validation({'org_id': 'ไม่พบ Organizer ที่เลือก'});
     }
-    if (await _db.exists('projects', {'project_name': name, 'org_id': orgId})) {
+    final sameName = await _db.select('projects', {
+      'project_name': data['project_name'],
+      'org_id': data['org_id'],
+    });
+    if (sameName.any((p) => p['project_id'] != exceptId)) {
       throw AppException.conflict(
         'มีงานชื่อนี้ของ Organizer นี้อยู่แล้ว',
         fields: {'project_name': 'มีงานชื่อนี้ของ Organizer นี้อยู่แล้ว'},
       );
     }
+  }
 
-    final id = await _db.insert('projects', {
-      'project_name': name,
-      'org_id': orgId,
-      'start_date': textOf(body['start_date']),
-      'deadline': textOf(body['deadline']),
-      'wages': numOf(body['wages']),
-      'status': ProjectStatus.inProgress.value,
-    }, idColumn: 'project_id');
-    return getProject(id);
+  /// Deletes a project with its checklist steps and rating. The
+  /// organizer's average rate is recalculated without it.
+  Future<void> deleteProject(int id) async {
+    final rows = await _db.select('projects', {'project_id': id});
+    if (rows.isEmpty) throw AppException.notFound('ไม่พบงานนี้');
+    final orgId = rows.single['org_id'];
+
+    await _db.transaction((tx) async {
+      await tx.delete('project_checklists', {'project_id': id});
+      await tx.delete('ratings', {'project_id': id});
+      await tx.delete('projects', {'project_id': id});
+      final avg = await tx.select(
+        'ratings',
+        {'org_id': orgId},
+        columns: ['COALESCE(AVG(score), 0) AS avg_score'],
+      );
+      final rate = (avg.first['avg_score'] as num).toStringAsFixed(1);
+      await tx.update(
+        'organizers',
+        {'org_id': orgId},
+        {'rate': num.parse(rate)},
+      );
+    });
   }
 
   /// Projects that are not completed yet.
@@ -176,6 +229,14 @@ LEFT JOIN (
         'ไม่สามารถเปลี่ยนสถานะจาก "${_labels[project.status]}" '
         'เป็น "${_labels[next]}" ได้',
       );
+    }
+    if (next == ProjectStatus.pending) {
+      if (project.checklists.isEmpty) {
+        throw AppException.conflict('ต้องเพิ่ม Checklist ก่อนส่งงาน');
+      }
+      if (project.progress < 100) {
+        throw AppException.conflict('ต้องทำ Checklist ให้ครบ 100% ก่อนส่งงาน');
+      }
     }
 
     final now = DateTime.now().toUtc();

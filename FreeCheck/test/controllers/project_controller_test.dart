@@ -131,6 +131,7 @@ void main() {
   group('status transitions', () {
     test('full path: submit → fail → submit → pass → confirm', () async {
       final id = (await controller.createProject(body('Website'))).projectId;
+      await readyToSubmit(db, id);
 
       final submitted = await controller.submitProject(id);
       expect(submitted.status, ProjectStatus.pending);
@@ -185,6 +186,7 @@ void main() {
     await controller.createProject(body('Later', deadline: '2026-12-31'));
     await controller.createProject(body('Sooner', deadline: '2026-11-01'));
     final done = await controller.createProject(body('Done'));
+    await readyToSubmit(db, done.projectId);
     for (final step in [
       controller.submitProject,
       controller.passProject,
@@ -203,6 +205,7 @@ void main() {
   test('getHistory lists paid work newest first with its rating', () async {
     Future<int> complete(String name) async {
       final id = (await controller.createProject(body(name))).projectId;
+      await readyToSubmit(db, id);
       await controller.submitProject(id);
       await controller.passProject(id);
       await controller.confirmPayment(id);
@@ -217,5 +220,131 @@ void main() {
     expect([for (final p in history) p.projectName], ['Second', 'First']);
     expect(history.last.rating!.score, 4);
     expect(history.first.rating, isNull);
+  });
+
+  group('submit needs a finished checklist', () {
+    test('throws 409 when the project has no checklist', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      await expectLater(controller.submitProject(id), throwsAppException(409));
+    });
+
+    test('throws 409 until every step is ticked, then submits', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      final type = await checklists.createChecklist({
+        'name': 'Web',
+        'steps': ['a', 'b'],
+      });
+      await checklists.addChecklistToProject(id, {'type_id': type.typeId});
+      await checklists.updateChecklist(
+        id,
+        type.checklists.first.checklistId,
+        {},
+      );
+
+      await expectLater(controller.submitProject(id), throwsAppException(409));
+      expect(
+        (await controller.getProject(id)).status,
+        ProjectStatus.inProgress,
+      );
+
+      await checklists.updateChecklist(
+        id,
+        type.checklists.last.checklistId,
+        {},
+      );
+      expect(
+        (await controller.submitProject(id)).status,
+        ProjectStatus.pending,
+      );
+    });
+  });
+
+  group('updateProject', () {
+    test('saves the new details', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+
+      final updated = await controller.updateProject(id, {
+        ...body('Website v2', deadline: '2026-12-01'),
+        'wages': '20000',
+      });
+
+      expect(updated.projectName, 'Website v2');
+      expect(updated.deadline, DateTime(2026, 12));
+      expect(updated.wages, 20000);
+      expect(updated.status, ProjectStatus.inProgress);
+    });
+
+    test('keeps its own name but rejects another project\'s', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      await controller.createProject(body('Logo'));
+
+      await controller.updateProject(id, body('Website'));
+      await expectLater(
+        controller.updateProject(id, body('Logo')),
+        throwsAppException(409, field: 'project_name'),
+      );
+    });
+
+    test('throws 400 when invalid and 404 when missing', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      await expectLater(
+        controller.updateProject(id, {...body('x'), 'wages': 'abc'}),
+        throwsAppException(400, field: 'wages'),
+      );
+      await expectLater(
+        controller.updateProject(99, body('x')),
+        throwsAppException(404),
+      );
+    });
+
+    test('throws 409 for a completed project', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      await readyToSubmit(db, id);
+      await controller.submitProject(id);
+      await controller.passProject(id);
+      await controller.confirmPayment(id);
+
+      await expectLater(
+        controller.updateProject(id, body('Website v2')),
+        throwsAppException(409),
+      );
+    });
+  });
+
+  group('deleteProject', () {
+    test('deletes the project with its checklist steps', () async {
+      final id = (await controller.createProject(body('Website'))).projectId;
+      await readyToSubmit(db, id);
+
+      await controller.deleteProject(id);
+
+      expect(await db.select('projects', {}), isEmpty);
+      expect(await db.select('project_checklists', {}), isEmpty);
+    });
+
+    test('drops its rating from the organizer average', () async {
+      Future<int> rated(String name, int score) async {
+        final id = (await controller.createProject(body(name))).projectId;
+        await readyToSubmit(db, id);
+        await controller.submitProject(id);
+        await controller.passProject(id);
+        await controller.confirmPayment(id);
+        await RatingController(db).saveRating(id, {'score': score});
+        return id;
+      }
+
+      await rated('A', 5);
+      final low = await rated('B', 2);
+      expect((await db.select('organizers', {})).single['rate'], 3.5);
+
+      await controller.deleteProject(low);
+
+      expect((await db.select('organizers', {})).single['rate'], 5);
+      expect(await db.select('ratings', {}), hasLength(1));
+    });
+
+    test('throws 404 when missing', () async {
+      await expectLater(controller.deleteProject(99), throwsAppException(404));
+    });
   });
 }

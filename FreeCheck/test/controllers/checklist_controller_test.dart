@@ -197,6 +197,7 @@ void main() {
       await controller.addChecklistToProject(projectId, {
         'type_id': web.typeId,
       });
+      await readyToSubmit(db, projectId);
       await projects.submitProject(projectId);
       await projects.passProject(projectId);
       await projects.confirmPayment(projectId);
@@ -249,6 +250,125 @@ void main() {
     test('throws 404 when step is not in project', () async {
       await expectLater(
         controller.updateChecklist(projectId, 99, {}),
+        throwsAppException(404),
+      );
+    });
+  });
+
+  group('editChecklist', () {
+    test('renames, adds and removes unused steps', () async {
+      final web = await controller.createChecklist({
+        'name': 'Web',
+        'steps': ['a', 'b', 'c'],
+      });
+      final [a, b, _] = web.checklists;
+
+      final edited = await controller.editChecklist(web.typeId, {
+        'name': 'Website',
+        'steps': [
+          {'checklist_id': a.checklistId, 'name': 'a2'},
+          {'checklist_id': b.checklistId, 'name': 'b'},
+          'd',
+        ],
+      });
+
+      expect(edited.name, 'Website');
+      expect([for (final c in edited.checklists) c.name], ['a2', 'b', 'd']);
+      expect(edited.checklists.first.checklistId, a.checklistId);
+    });
+
+    test('throws 409 when removing a step a project uses', () async {
+      final web = await controller.createChecklist({
+        'name': 'Web',
+        'steps': ['a', 'b'],
+      });
+      await controller.addChecklistToProject(projectId, {
+        'type_id': web.typeId,
+      });
+
+      await expectLater(
+        controller.editChecklist(web.typeId, {
+          'name': 'Web',
+          'steps': [
+            {'checklist_id': web.checklists.first.checklistId, 'name': 'a'},
+          ],
+        }),
+        throwsAppException(409, field: 'steps'),
+      );
+      expect((await controller.getTypes()).single.checklists, hasLength(2));
+    });
+
+    test('throws 409 for a name another type has, 404 when missing', () async {
+      final web = await controller.createChecklist({
+        'name': 'Web',
+        'steps': ['a'],
+      });
+      await controller.createChecklist({
+        'name': 'Logo',
+        'steps': ['b'],
+      });
+
+      await expectLater(
+        controller.editChecklist(web.typeId, {
+          'name': 'Logo',
+          'steps': ['a'],
+        }),
+        throwsAppException(409, field: 'name'),
+      );
+      await expectLater(
+        controller.editChecklist(99, {
+          'name': 'X',
+          'steps': ['a'],
+        }),
+        throwsAppException(404),
+      );
+    });
+
+    test('throws 400 when a step is empty', () async {
+      final web = await controller.createChecklist({
+        'name': 'Web',
+        'steps': ['a'],
+      });
+      await expectLater(
+        controller.editChecklist(web.typeId, {
+          'name': 'Web',
+          'steps': [
+            {'checklist_id': web.checklists.first.checklistId, 'name': ' '},
+          ],
+        }),
+        throwsAppException(400, field: 'steps.0'),
+      );
+    });
+  });
+
+  group('deleteChecklist', () {
+    test('deletes a type and its steps when no project uses it', () async {
+      final web = await type('Web', ['a', 'b']);
+      await controller.deleteChecklist(web.typeId);
+      expect(await db.select('types', {}), isEmpty);
+      expect(await db.select('checklists', {}), isEmpty);
+    });
+
+    test('throws 409 while a project uses its steps', () async {
+      final web = await type('Web', ['a']);
+      await controller.addChecklistToProject(projectId, {
+        'type_id': web.typeId,
+      });
+      await expectLater(
+        controller.deleteChecklist(web.typeId),
+        throwsAppException(409),
+      );
+
+      await controller.removeChecklistFromProject(projectId, {
+        'type_id': web.typeId,
+      });
+      await controller.deleteChecklist(web.typeId);
+      expect(await db.select('types', {}), isEmpty);
+    });
+
+    test('throws 404 when missing', () async {
+      await expectLater(
+        controller.deleteChecklist(99),
         throwsAppException(404),
       );
     });

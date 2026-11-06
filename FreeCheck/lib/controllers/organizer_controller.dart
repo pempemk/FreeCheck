@@ -33,8 +33,8 @@ class OrganizerController {
     if (phone != null) {
       if (!digitsPattern.hasMatch(phone)) {
         errors['phone'] = 'เบอร์โทรต้องเป็นตัวเลข 0-9 เท่านั้น';
-      } else if (phone.length > 20) {
-        errors['phone'] = 'เบอร์โทรยาวเกิน 20 หลัก';
+      } else if (phone.length > 10) {
+        errors['phone'] = 'เบอร์โทรต้องไม่เกิน 10 หลัก';
       }
     }
 
@@ -69,6 +69,50 @@ class OrganizerController {
     final data = organizer.toJson()..remove('org_id');
     final id = await _db.insert('organizers', data, idColumn: 'org_id');
     return Organizer.fromJson({...data, 'org_id': id});
+  }
+
+  /// Saves new values for an existing organizer. Its rate is kept.
+  Future<Organizer> updateOrganizer(int id, Map<String, dynamic> body) async {
+    final errors = validate(body);
+    if (errors.isNotEmpty) throw AppException.validation(errors);
+
+    final rows = await _db.select('organizers', {'org_id': id});
+    if (rows.isEmpty) throw AppException.notFound('ไม่พบ Organizer นี้');
+
+    final orgName = textOf(body['org_name'])!;
+    final sameName = await _db.select('organizers', {'org_name': orgName});
+    if (sameName.any((o) => o['org_id'] != id)) {
+      throw AppException.conflict(
+        'มี Organizer ชื่อนี้อยู่แล้ว',
+        fields: {'org_name': 'มี Organizer ชื่อนี้อยู่แล้ว'},
+      );
+    }
+
+    await _db.update(
+      'organizers',
+      {'org_id': id},
+      {
+        'org_name': orgName,
+        'contact_name': textOf(body['contact_name']),
+        'phone': textOf(body['phone']),
+        'color': textOf(body['color'])!.toUpperCase(),
+      },
+    );
+    final updated = await _db.select('organizers', {'org_id': id});
+    return Organizer.fromJson(updated.single);
+  }
+
+  /// Deletes an organizer that has no projects.
+  Future<void> deleteOrganizer(int id) async {
+    if (!await _db.exists('organizers', {'org_id': id})) {
+      throw AppException.notFound('ไม่พบ Organizer นี้');
+    }
+    if (await _db.exists('projects', {'org_id': id})) {
+      throw AppException.conflict(
+        'Organizer นี้ยังมีโปรเจกต์อยู่ ต้องลบโปรเจกต์ก่อน',
+      );
+    }
+    await _db.delete('organizers', {'org_id': id});
   }
 
   Future<List<Organizer>> getOrganizers() async {

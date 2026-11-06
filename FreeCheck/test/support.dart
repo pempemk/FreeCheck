@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:freelance_tracker/controllers/checklist_controller.dart';
 import 'package:freelance_tracker/core/app_exception.dart';
 import 'package:freelance_tracker/services/database_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -28,3 +29,24 @@ Matcher throwsAppException(int statusCode, {String? field}) => throwsA(
         isTrue,
       ),
 );
+
+var _readyTypes = 0;
+
+/// Gives the project a checklist (if it has none) and ticks every step, so
+/// it can be submitted.
+Future<void> readyToSubmit(DatabaseService db, int projectId) async {
+  final checklists = ChecklistController(db);
+  var items = await checklists.getProjectChecklists(projectId);
+  if (items.isEmpty) {
+    final type = await checklists.createChecklist({
+      'name': 'ready ${_readyTypes++}',
+      'steps': ['done'],
+    });
+    items = await checklists.addChecklistToProject(projectId, {
+      'type_id': type.typeId,
+    });
+  }
+  for (final item in items.where((i) => !i.completed)) {
+    await checklists.updateChecklist(projectId, item.checklistId, {});
+  }
+}

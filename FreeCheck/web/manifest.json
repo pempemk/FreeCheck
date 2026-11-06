@@ -1,6 +1,6 @@
 {
-    "name": "Freelance Tracker",
-    "short_name": "Freelance Tracker",
+    "name": "FreeCheck",
+    "short_name": "FreeCheck",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
