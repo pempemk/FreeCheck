@@ -62,7 +62,7 @@ class ProjectFormPage extends Page<List<Organizer>> {
       () => editing == null
           ? _projects.createProject(body)
           : _projects.updateProject(editing.projectId, body),
-      success: 'บันทึกโปรเจกต์เรียบร้อยแล้ว',
+      success: 'บันทึกสำเร็จ',
     );
     if (project != null && mounted) Navigator.pop(context, project);
   }
@@ -79,10 +79,7 @@ class ProjectFormPage extends Page<List<Organizer>> {
           ? 'บันทึกรายละเอียดงานที่ได้รับ'
           : 'แก้ไขรายละเอียดงาน',
       loading: _loading,
-      bottom: _primaryButton(
-        _editing == null ? 'บันทึกโปรเจกต์' : 'บันทึกการแก้ไข',
-        _loading ? null : _save,
-      ),
+      bottom: _primaryButton('บันทึก', _loading ? null : _save),
       children: [
         _fieldLabel('ชื่อโปรเจกต์'),
         TextField(
@@ -127,7 +124,7 @@ class ProjectFormPage extends Page<List<Organizer>> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: _addOrganizer,
-            child: const Text('+ เพิ่ม Organizer ใหม่'),
+            child: const Text('เพิ่ม Organizer'),
           ),
         ),
         const SizedBox(height: 4),

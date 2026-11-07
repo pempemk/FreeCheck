@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show FilledButton, FloatingActionButton;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freelance_tracker/pages/page.dart';
 import 'package:freelance_tracker/services/database_service.dart';
@@ -50,6 +51,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('โปรเจกต์ของฉัน'), findsOneWidget);
     expect(find.text('ทั้งหมด 2'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'เพิ่ม Project'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
     // The filter row scrolls sideways on narrow screens.
     await tester.ensureVisible(find.text('รอตรวจ').first);
     await tester.pumpAndSettle();

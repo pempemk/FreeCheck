@@ -549,6 +549,113 @@ Widget _financeCard({
   );
 }
 
+/// Returned by [_selectSheet] when the user asks to create a new item.
+const _createChoice = Object();
+
+/// Bottom sheet listing [items]. Tapping one only marks it as selected;
+/// "บันทึก" returns it. Returns [_createChoice] when [createLabel] is tapped,
+/// or null when dismissed.
+Future<Object?> _selectSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<T> items,
+  required String Function(T) label,
+  String Function(T)? detail,
+  String? note,
+  String? createLabel,
+  T? selected,
+}) {
+  return showModalBottomSheet<Object>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      var current = items.contains(selected) ? selected : null;
+      return StatefulBuilder(
+        builder: (context, setState) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
+                    ),
+                  ),
+                ),
+                if (note != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                    child: Text(note, style: const TextStyle(color: _muted)),
+                  ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    children: [
+                      if (items.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            'ไม่มีรายการให้เลือก',
+                            style: TextStyle(color: _muted),
+                          ),
+                        ),
+                      for (final item in items)
+                        ListTile(
+                          selected: item == current,
+                          selectedTileColor: _purpleSoft,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          leading: Icon(
+                            item == current
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                            color: item == current ? _primary : _muted,
+                          ),
+                          title: Text(label(item)),
+                          subtitle: detail == null ? null : Text(detail(item)),
+                          onTap: () => setState(() => current = item),
+                        ),
+                      if (createLabel != null)
+                        ListTile(
+                          leading: const Icon(Icons.add, color: _primary),
+                          title: Text(
+                            createLabel,
+                            style: const TextStyle(color: _primary),
+                          ),
+                          onTap: () => Navigator.pop(context, _createChoice),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: _primaryButton(
+                    'บันทึก',
+                    current == null
+                        ? null
+                        : () => Navigator.pop(context, current),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 /// Trash icon for the header of screens that can delete what they show.
 Widget _deleteButton(String tooltip, VoidCallback? onPressed) => IconButton(
   tooltip: tooltip,
@@ -678,7 +785,7 @@ Future<int?> _showRatingDialog(
               onPressed: score == 0
                   ? null
                   : () => Navigator.pop(context, score),
-              child: const Text('บันทึก'),
+              child: const Text('บันทึกคะแนน'),
             ),
           ],
         ),
@@ -693,6 +800,7 @@ Future<bool> _confirm(
   required String title,
   String? message,
   String confirmLabel = 'ยืนยัน',
+  String cancelLabel = 'ยกเลิก',
   bool destructive = false,
 }) async {
   final result = await showDialog<bool>(
@@ -703,7 +811,7 @@ Future<bool> _confirm(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('ยกเลิก'),
+          child: Text(cancelLabel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),

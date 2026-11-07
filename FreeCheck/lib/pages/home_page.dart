@@ -93,18 +93,6 @@ class HomePage extends Page<_HomeData> {
           },
         ),
       ),
-      floatingActionButton: _tab == 1
-          ? FloatingActionButton(
-              tooltip: 'เพิ่มโปรเจกต์',
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              onPressed: () => _openForm(projectFormRoute),
-              child: const Icon(Icons.add, size: 32),
-            )
-          : null,
       bottomNavigationBar: _navigationBar(),
     );
   }
@@ -211,7 +199,7 @@ class HomePage extends Page<_HomeData> {
             'โปรเจกต์ที่ต้องติดตาม',
             trailing: TextButton(
               onPressed: _showProjects,
-              child: const Text('ดูทั้งหมด →'),
+              child: const Text('ดูทั้งหมด'),
             ),
           ),
           const SizedBox(height: 12),
@@ -220,7 +208,7 @@ class HomePage extends Page<_HomeData> {
               'ยังไม่มีงานที่กำลังทำ',
               'เพิ่มโปรเจกต์แรกเพื่อเริ่มติดตามงาน',
               action: _softButton(
-                '+ เพิ่มโปรเจกต์',
+                'เพิ่ม Project',
                 () => _openForm(projectFormRoute),
               ),
             ),
@@ -318,6 +306,10 @@ class HomePage extends Page<_HomeData> {
       title: 'โปรเจกต์ของฉัน',
       subtitle: 'จัดการทุกงานในที่เดียว',
       onRefresh: _refresh,
+      bottom: _primaryButton(
+        'เพิ่ม Project',
+        () => _openForm(projectFormRoute),
+      ),
       children: [
         TextField(
           controller: _projectSearch,
@@ -346,14 +338,13 @@ class HomePage extends Page<_HomeData> {
           _emptyCard(
             d.active.isEmpty ? 'ยังไม่มีโปรเจกต์' : 'ไม่พบโปรเจกต์',
             d.active.isEmpty
-                ? 'กดปุ่ม + เพื่อเพิ่มโปรเจกต์แรก'
+                ? 'กดปุ่ม เพิ่ม Project เพื่อเพิ่มโปรเจกต์แรก'
                 : 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง',
           ),
         for (final p in shown) ...[
           _projectCard(p, onTap: () => _openProject(p)),
           const SizedBox(height: 16),
         ],
-        const SizedBox(height: 64),
       ],
     );
   }
@@ -373,7 +364,7 @@ class HomePage extends Page<_HomeData> {
       subtitle: 'สร้างรายการขั้นตอนที่ใช้ซ้ำได้',
       onRefresh: _refresh,
       bottom: _primaryButton(
-        '+ สร้าง Checklist ใหม่',
+        'สร้าง Checklist',
         () => _openForm(checklistFormRoute),
       ),
       children: [
@@ -408,7 +399,7 @@ class HomePage extends Page<_HomeData> {
                   runSpacing: 8,
                   children: [
                     _pill(
-                      'เลือกใช้งาน →',
+                      'เลือกใช้งาน',
                       color: _primary,
                       background: _purpleSoft,
                       onTap: _loading ? null : () => _applyTemplate(t, d),
@@ -442,45 +433,20 @@ class HomePage extends Page<_HomeData> {
       return;
     }
 
-    final project = await showModalBottomSheet<Project>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                'ใช้ "${type.name}" กับโปรเจกต์',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _ink,
-                ),
-              ),
-            ),
-            for (final p in candidates)
-              ListTile(
-                leading: CircleAvatar(
-                  radius: 6,
-                  backgroundColor: colorFromHex(p.organizer?.color),
-                ),
-                title: Text(p.projectName),
-                subtitle: Text(p.organizer?.orgName ?? ''),
-                onTap: () => Navigator.pop(context, p),
-              ),
-          ],
-        ),
-      ),
+    final project = await _selectSheet<Project>(
+      context,
+      title: 'เลือกใช้งาน "${type.name}"',
+      items: candidates,
+      label: (p) => p.projectName,
+      detail: (p) => p.organizer?.orgName ?? '',
     );
-    if (project == null) return;
+    if (project is! Project) return;
 
     final items = await _run(
       () => _checklists.addChecklistToProject(project.projectId, {
         'type_id': type.typeId,
       }),
-      success: 'เพิ่ม "${type.name}" ให้ ${project.projectName} แล้ว',
+      success: 'บันทึกสำเร็จ',
     );
     if (items != null) await _refresh();
   }
@@ -502,7 +468,7 @@ class HomePage extends Page<_HomeData> {
       subtitle: 'รายชื่อผู้ว่าจ้างและข้อมูลติดต่อ',
       onRefresh: _refresh,
       bottom: _primaryButton(
-        '+ เพิ่ม Organizer',
+        'เพิ่ม Organizer',
         () => _openForm(organizerFormRoute),
       ),
       children: [

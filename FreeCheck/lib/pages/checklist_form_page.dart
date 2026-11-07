@@ -60,7 +60,7 @@ class ChecklistFormPage extends Page<void> {
                       : {'checklist_id': s.id, 'name': s.text.text},
               ],
             }),
-      success: 'บันทึก Checklist เรียบร้อยแล้ว',
+      success: 'บันทึกสำเร็จ',
     );
     if (type != null && mounted) Navigator.pop(context, type);
   }
@@ -77,10 +77,7 @@ class ChecklistFormPage extends Page<void> {
       action: _editing == null
           ? null
           : _deleteButton('ลบ Checklist', _loading ? null : _delete),
-      bottom: _primaryButton(
-        _editing == null ? 'บันทึก Checklist' : 'บันทึกการแก้ไข',
-        _loading ? null : _save,
-      ),
+      bottom: _primaryButton('บันทึก', _loading ? null : _save),
       children: [
         _fieldLabel('ประเภทงาน'),
         TextField(
@@ -101,7 +98,7 @@ class ChecklistFormPage extends Page<void> {
             child: _stepRow(i),
           ),
         const SizedBox(height: 8),
-        _softButton('+ เพิ่มขั้นตอน', _addStep),
+        _softButton('เพิ่มขั้นตอน', _addStep),
       ],
     );
   }

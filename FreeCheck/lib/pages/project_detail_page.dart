@@ -33,6 +33,10 @@ class ProjectDetailPage extends Page<_Detail> {
   final int _projectId;
   final _note = TextEditingController();
 
+  /// Text of the revision dialog. It lives with the page, because the
+  /// dialog still builds while it animates closed.
+  final _revision = TextEditingController();
+
   Project get _project => data!.project;
 
   @override
@@ -44,6 +48,7 @@ class ProjectDetailPage extends Page<_Detail> {
   @override
   void dispose() {
     _note.dispose();
+    _revision.dispose();
     super.dispose();
   }
 
@@ -61,74 +66,50 @@ class ProjectDetailPage extends Page<_Detail> {
     _note.text = project.note;
   }
 
-  Future<void> _pickChecklist(List<Type> available) async {
-    final choice = await showModalBottomSheet<Object>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                _project.checklists.isEmpty
-                    ? 'เลือก Checklist'
-                    : 'เปลี่ยนเป็น Checklist',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _ink,
-                ),
-              ),
-            ),
-            for (final t in available)
-              ListTile(
-                leading: const Text('✦', style: TextStyle(fontSize: 18)),
-                title: Text(t.name),
-                subtitle: Text('${t.checklists.length} ขั้นตอน'),
-                onTap: () => Navigator.pop(context, t),
-              ),
-            ListTile(
-              leading: const Icon(Icons.add, color: _primary),
-              title: const Text(
-                'สร้าง Checklist ใหม่',
-                style: TextStyle(color: _primary),
-              ),
-              onTap: () => Navigator.pop(context, checklistFormRoute),
-            ),
-          ],
-        ),
-      ),
+  /// Types the project does not use yet.
+  List<Type> _available(List<Type> types) {
+    final used = {
+      for (final item in _project.checklists) item.checklist?.typeId,
+    };
+    return [
+      for (final t in types)
+        if (!used.contains(t.typeId)) t,
+    ];
+  }
+
+  /// UC-04: pick a type in the sheet, then "บันทึก" ties it to the project.
+  Future<void> _pickChecklist({Type? selected}) async {
+    final changing = _project.checklists.isNotEmpty;
+    final choice = await _selectSheet<Type>(
+      context,
+      title: changing ? 'เปลี่ยน Checklist' : 'เลือก Checklist',
+      note: changing
+          ? 'ขั้นตอนและสถานะที่ติ๊กไว้ของ Checklist เดิมจะหายไป'
+          : null,
+      items: _available(data!.types),
+      label: (t) => t.name,
+      detail: (t) => '${t.checklists.length} ขั้นตอน',
+      selected: selected,
+      createLabel: 'สร้าง Checklist',
     );
-    if (choice is Type) return _addChecklist(choice);
-    if (choice == checklistFormRoute) {
+    if (choice is Type) return _saveChecklist(choice);
+    if (identical(choice, _createChoice)) {
       final created = await showForm(checklistFormRoute);
-      if (created is Type) await _addChecklist(created);
+      if (created is! Type || !mounted) return;
+      final types = await _checklists.getTypes();
+      showData((project: _project, types: types));
+      await _pickChecklist(selected: created);
     }
   }
 
   /// Uses [type] as the project's checklist, replacing the current one
   /// (a project has only one).
-  Future<void> _addChecklist(Type type) async {
+  Future<void> _saveChecklist(Type type) async {
     final current = {
       for (final item in _project.checklists)
         if (item.checklist != null) item.checklist!.typeId,
     };
-    if (current.isNotEmpty) {
-      final ok = await _confirm(
-        context,
-        title: 'เปลี่ยน Checklist',
-        message:
-            'เปลี่ยนเป็น "${type.name}" ใช่หรือไม่ '
-            'ขั้นตอนและสถานะที่ติ๊กไว้ของอันเดิมจะหายไป',
-        confirmLabel: 'เปลี่ยน',
-      );
-      if (!ok) return;
-    }
-    // Reload the project (for its progress) and the types (a new one may
-    // have just been created).
-    final result = await _run(() async {
+    final project = await _run(() async {
       for (final typeId in current) {
         await _checklists.removeChecklistFromProject(_projectId, {
           'type_id': typeId,
@@ -137,11 +118,9 @@ class ProjectDetailPage extends Page<_Detail> {
       await _checklists.addChecklistToProject(_projectId, {
         'type_id': type.typeId,
       });
-      return (_projects.getProject(_projectId), _checklists.getTypes()).wait;
-    }, success: 'ใช้ Checklist "${type.name}" เรียบร้อยแล้ว');
-    if (result == null) return;
-    final (project, types) = result;
-    showData((project: project, types: types));
+      return _projects.getProject(_projectId);
+    }, success: 'บันทึกสำเร็จ');
+    if (project != null) _showProject(project);
   }
 
   Future<void> _removeChecklist(Type type) async {
@@ -152,6 +131,7 @@ class ProjectDetailPage extends Page<_Detail> {
           'ลบขั้นตอนทั้งหมดของ "${type.name}" ออกจากงานนี้ใช่หรือไม่ '
           'สถานะที่ติ๊กไว้จะหายไปด้วย',
       confirmLabel: 'ลบ',
+      destructive: true,
     );
     if (!ok) return;
     final project = await _run(() async {
@@ -159,10 +139,11 @@ class ProjectDetailPage extends Page<_Detail> {
         'type_id': type.typeId,
       });
       return _projects.getProject(_projectId);
-    }, success: 'ลบ Checklist เรียบร้อยแล้ว');
+    }, success: 'ลบสำเร็จ');
     if (project != null) _showProject(project);
   }
 
+  /// UC-05
   Future<void> _toggle(ProjectChecklist item) async {
     final completed = !item.completed;
     final progress = await _run(
@@ -185,56 +166,70 @@ class ProjectDetailPage extends Page<_Detail> {
     _showProject(_withChecklists(_project, items, progress));
   }
 
+  /// UC-06: saves right away; the page then shows "ผ่าน" / "ไม่ผ่าน".
   Future<void> _submit() async {
-    final ok = await _confirm(
-      context,
-      title: 'ส่งงานให้ Organizer',
-      message:
-          'ส่งงานให้ ${_project.organizer?.orgName ?? 'Organizer'} '
-          'ตรวจสอบใช่หรือไม่',
-      confirmLabel: 'ส่งงาน',
-    );
-    if (!ok) return;
-    final project = await _run(
-      () => _projects.submitProject(_projectId),
-      success: 'ส่งงานแล้ว รอผลการตรวจ',
-    );
+    final project = await _run(() => _projects.submitProject(_projectId));
     if (project != null) _showProject(project);
   }
 
-  // Back to work, saving the note typed on the tracking screen.
+  /// UC-07: back to work first, then ask for the revision details.
   Future<void> _fail() async {
-    final note = _note.text;
-    final project = await _run(() async {
-      var project = await _projects.failProject(_projectId);
-      if (note.trim() != project.note) {
-        project = await _projects.saveNote(_projectId, {'note': note});
-      }
-      return project;
-    }, success: 'บันทึกแล้ว กลับไปแก้ไขงาน');
-    if (project != null) _showProject(project);
+    final project = await _run(() => _projects.failProject(_projectId));
+    if (project == null) return;
+    _showProject(project);
+    if (!mounted) return;
+    final note = await _revisionDialog(project.note);
+    if (note != null) await _saveNote(note);
   }
 
-  Future<void> _saveNote() async {
+  Future<String?> _revisionDialog(String initial) {
+    _revision.text = initial;
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('รายละเอียดการแก้ไข'),
+        content: SizedBox(
+          width: 480,
+          child: TextField(
+            controller: _revision,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 8,
+            decoration: const InputDecoration(
+              hintText: 'กรอกรายละเอียดที่ต้องปรับแก้...',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, _revision.text),
+            child: const Text('บันทึก'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveNote(String note) async {
     final project = await _run(
-      () => _projects.saveNote(_projectId, {'note': _note.text}),
-      success: 'บันทึกโน้ตเรียบร้อยแล้ว',
+      () => _projects.saveNote(_projectId, {'note': note}),
+      success: 'บันทึกสำเร็จ',
     );
     if (project != null) _showProject(project);
   }
 
+  /// UC-08: status becomes submitted, then the payment window (UC-09)
+  /// opens. It can be closed and reopened with "ยืนยันรับเงิน".
   Future<void> _pass() async {
-    final ok = await _confirm(
-      context,
-      title: 'ผ่านการตรวจ',
-      message: 'ยืนยันว่า Organizer ตรวจรับงานแล้ว สถานะจะเปลี่ยนเป็นรอรับเงิน',
-    );
-    if (!ok) return;
-    final project = await _run(
-      () => _projects.passProject(_projectId),
-      success: 'งานผ่านแล้ว รอรับเงิน',
-    );
-    if (project != null) _showProject(project);
+    final project = await _run(() => _projects.passProject(_projectId));
+    if (project == null) return;
+    _showProject(project);
+    await _confirmPayment();
   }
 
   Future<void> _confirmPayment() async {
@@ -314,31 +309,18 @@ class ProjectDetailPage extends Page<_Detail> {
         const SizedBox(height: 20),
         _decisionTile(
           icon: Icons.check_rounded,
-          title: 'ผ่านการตรวจ',
-          subtitle: 'เปลี่ยนสถานะเป็นรอรับเงิน',
+          label: 'ผ่าน',
           color: _green,
           background: _greenSoft,
           onTap: _pass,
         ),
         const SizedBox(height: 14),
         _decisionTile(
-          icon: Icons.refresh_rounded,
-          title: 'ต้องแก้ไข',
-          subtitle: 'บันทึกคำแนะนำและกลับไปทำงานต่อ',
+          icon: Icons.close_rounded,
+          label: 'ไม่ผ่าน',
           color: _red,
           background: _redSoft,
           onTap: _fail,
-        ),
-        const SizedBox(height: 32),
-        _fieldLabel('หมายเหตุสำหรับการแก้ไข'),
-        TextField(
-          controller: _note,
-          minLines: 3,
-          maxLines: 6,
-          decoration: InputDecoration(
-            hintText: 'กรอกรายละเอียดที่ต้องปรับแก้...',
-            errorText: fieldErrors['note'],
-          ),
         ),
       ],
     );
@@ -346,8 +328,7 @@ class ProjectDetailPage extends Page<_Detail> {
 
   Widget _decisionTile({
     required IconData icon,
-    required String title,
-    required String subtitle,
+    required String label,
     required Color color,
     required Color background,
     required VoidCallback onTap,
@@ -357,25 +338,15 @@ class ProjectDetailPage extends Page<_Detail> {
       padding: const EdgeInsets.all(24),
       onTap: _loading ? null : onTap,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 26),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(color: color)),
-              ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -398,11 +369,6 @@ class ProjectDetailPage extends Page<_Detail> {
     for (final item in project.checklists) {
       groups.putIfAbsent(item.checklist?.typeId, () => []).add(item);
     }
-    final available = [
-      for (final t in d.types)
-        if (!groups.containsKey(t.typeId)) t,
-    ];
-
     return _screen(
       context,
       title: 'รายละเอียดโปรเจกต์',
@@ -534,9 +500,9 @@ class ProjectDetailPage extends Page<_Detail> {
           const SizedBox(height: 6),
           _softButton(
             project.checklists.isEmpty
-                ? '+ เพิ่ม Checklist'
+                ? 'เลือก Checklist'
                 : 'เปลี่ยน Checklist',
-            _loading ? null : () => _pickChecklist(available),
+            _loading ? null : _pickChecklist,
           ),
         ],
         const SizedBox(height: 28),
@@ -547,17 +513,16 @@ class ProjectDetailPage extends Page<_Detail> {
           minLines: 2,
           maxLines: 6,
           decoration: InputDecoration(
-            hintText: 'จดสิ่งที่ต้องแก้ไข หรือรายละเอียดเพิ่มเติม',
+            hintText: 'จดรายละเอียดการแก้ไข หรือรายละเอียดเพิ่มเติม',
             errorText: fieldErrors['note'],
           ),
         ),
         if (editable)
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: _loading ? null : _saveNote,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('บันทึกโน้ต'),
+            child: TextButton(
+              onPressed: _loading ? null : () => _saveNote(_note.text),
+              child: const Text('บันทึก'),
             ),
           ),
       ],
@@ -604,15 +569,12 @@ class ProjectDetailPage extends Page<_Detail> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               project.checklists.isEmpty
-                  ? 'เพิ่ม Checklist ก่อนส่งงาน'
+                  ? 'เลือก Checklist ก่อนส่งงาน'
                   : 'ทำ Checklist ให้ครบ 100% ก่อนส่งงาน',
               style: const TextStyle(color: _muted),
             ),
           ),
-        _primaryButton(
-          'ส่งงานให้ Organizer',
-          ready && !_loading ? _submit : null,
-        ),
+        _primaryButton('ส่งงาน', ready && !_loading ? _submit : null),
       ],
     );
   }
@@ -626,11 +588,7 @@ class ProjectDetailPage extends Page<_Detail> {
     ),
     ProjectStatus.completed =>
       project.rating == null
-          ? _primaryButton(
-              '★ ให้คะแนน Organizer',
-              _loading ? null : _rate,
-              color: _orange,
-            )
+          ? _primaryButton('ให้คะแนน', _loading ? null : _rate, color: _orange)
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

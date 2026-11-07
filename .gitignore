@@ -3,3 +3,4 @@ FreeCheck/build/
 legacy/backend/.env
 legacy/backend/.dart_tool/
 legacy/backend/build/
+legacy/

@@ -14,7 +14,7 @@ void main() {
   testWidgets('shows validation errors under the fields', (tester) async {
     await pumpPage(tester, () => OrganizerFormPage(db: db));
 
-    await tester.tap(find.text('บันทึก Organizer'));
+    await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
 
     expect(find.text('กรุณากรอกชื่อ Organizer'), findsOneWidget);
@@ -30,12 +30,13 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), 'Nova Events');
     await tester.enterText(find.byType(TextField).at(1), 'ศิริพร');
     await tester.enterText(find.byType(TextField).at(2), '0812345678');
-    await tester.tap(find.text('บันทึก Organizer'));
+    await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
 
     final rows = await db.select('organizers', {});
     expect(rows.single['org_name'], 'Nova Events');
     expect(rows.single['rate'], 0);
+    expect(find.text('บันทึกสำเร็จ'), findsOneWidget);
   });
 
   testWidgets('phone field keeps only up to 10 digits', (tester) async {
@@ -57,7 +58,7 @@ void main() {
 
     expect(find.text('Nova Events'), findsOneWidget);
     await tester.enterText(find.byType(TextField).at(0), 'Nova Studio');
-    await tester.tap(find.text('บันทึกการแก้ไข'));
+    await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
 
     final rows = await db.select('organizers', {});
@@ -69,13 +70,13 @@ void main() {
   ) async {
     await pumpPage(tester, () => OrganizerFormPage(db: db));
 
-    await tester.tap(find.text('บันทึก Organizer'));
+    await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
 
     final banner = tester.getRect(find.text('ข้อมูลไม่ถูกต้อง'));
     final button = tester.getRect(
       find.ancestor(
-        of: find.text('บันทึก Organizer'),
+        of: find.text('บันทึก'),
         matching: find.byType(FilledButton),
       ),
     );

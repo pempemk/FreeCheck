@@ -190,7 +190,7 @@ abstract class Page<D> extends State<StatefulWidget> {
     final deleted = await _run(() async {
       await delete();
       return true;
-    }, success: 'ลบเรียบร้อยแล้ว');
+    }, success: 'ลบสำเร็จ');
     if ((deleted ?? false) && mounted) Navigator.pop(context, true);
   }
 
@@ -203,6 +203,7 @@ abstract class Page<D> extends State<StatefulWidget> {
       message:
           'ได้รับเงิน ${formatBaht(project.wages)} จาก '
           '${project.organizer?.orgName ?? 'Organizer'} แล้วใช่หรือไม่',
+      cancelLabel: 'ปิด',
     );
     if (!ok) return null;
     final paid = await _run(() => _projects.confirmPayment(project.projectId));
@@ -218,10 +219,9 @@ abstract class Page<D> extends State<StatefulWidget> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('ปิด'),
           ),
-          FilledButton.icon(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.star_rounded),
-            label: const Text('ให้คะแนน Organizer'),
+            child: const Text('ให้คะแนน Organizer'),
           ),
         ],
       ),
@@ -239,7 +239,7 @@ abstract class Page<D> extends State<StatefulWidget> {
     if (score == null) return false;
     final rating = await _run(
       () => _ratings.saveRating(project.projectId, {'score': score}),
-      success: 'ให้คะแนนเรียบร้อยแล้ว',
+      success: 'บันทึกการประเมินเรียบร้อยแล้ว',
     );
     return rating != null;
   }

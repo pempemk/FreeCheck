@@ -80,7 +80,7 @@ class OrganizerFormPage extends Page<void> {
       () => editing == null
           ? _organizers.createOrganizer(body)
           : _organizers.updateOrganizer(editing.orgId, body),
-      success: 'บันทึก Organizer เรียบร้อยแล้ว',
+      success: 'บันทึกสำเร็จ',
     );
     if (organizer != null && mounted) Navigator.pop(context, organizer);
   }
@@ -98,10 +98,7 @@ class OrganizerFormPage extends Page<void> {
       action: _editing == null
           ? null
           : _deleteButton('ลบ Organizer', _loading ? null : _delete),
-      bottom: _primaryButton(
-        _editing == null ? 'บันทึก Organizer' : 'บันทึกการแก้ไข',
-        _loading ? null : _save,
-      ),
+      bottom: _primaryButton('บันทึก', _loading ? null : _save),
       children: [
         _fieldLabel('ชื่อบริษัท'),
         TextField(

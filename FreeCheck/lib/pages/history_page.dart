@@ -65,7 +65,7 @@ class HistoryPage extends Page<_History> {
         _sectionTitle('รอรับเงิน'),
         const SizedBox(height: 14),
         if (d.awaiting.isEmpty)
-          _emptyCard('ไม่มีงานที่รอรับเงิน', 'งานที่ผ่านการตรวจจะแสดงที่นี่'),
+          _emptyCard('ไม่มีงานที่รอรับเงิน', 'งานที่ผ่านแล้วจะแสดงที่นี่'),
         for (final p in d.awaiting) ...[
           _surface(
             padding: const EdgeInsets.all(24),
@@ -117,18 +117,11 @@ class HistoryPage extends Page<_History> {
                 if (p.rating != null)
                   _stars(p.rating!.score)
                 else
-                  InkWell(
+                  _pill(
+                    'ให้คะแนน',
+                    color: _orange,
+                    background: _orangeSoft,
                     onTap: _loading ? null : () => _rate(p),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        '★ ให้คะแนน Organizer   →',
-                        style: TextStyle(
-                          color: _orange,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   ),
               ],
             ),

@@ -20,7 +20,7 @@ class Alert {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
-    _current?.remove();
+    if (_current?.mounted ?? false) _current!.remove();
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => _TopBanner(
