@@ -50,7 +50,7 @@ void main() {
     await tester.tap(find.text('โปรเจกต์'));
     await tester.pumpAndSettle();
     expect(find.text('โปรเจกต์ของฉัน'), findsOneWidget);
-    expect(find.text('ทั้งหมด 2'), findsOneWidget);
+    expect(find.text('ทั้งหมด 3'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'เพิ่ม Project'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsNothing);
     // The filter row scrolls sideways on narrow screens.

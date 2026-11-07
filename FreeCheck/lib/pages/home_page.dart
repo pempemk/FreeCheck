@@ -64,13 +64,13 @@ class HomePage extends Page<_HomeData> {
     await _refresh();
   }
 
-  Future<void> _editOrganizer(Organizer organizer) async {
-    await _openPage(() => OrganizerFormPage(db: _db, organizer: organizer));
+  Future<void> _openOrganizer(Organizer organizer) async {
+    await _openPage(() => OrganizerDetailPage(orgId: organizer.orgId, db: _db));
     await _refresh();
   }
 
-  Future<void> _editTemplate(Type type) async {
-    await _openPage(() => ChecklistFormPage(db: _db, type: type));
+  Future<void> _openTemplate(Type type) async {
+    await _openPage(() => ChecklistDetailPage(typeId: type.typeId, db: _db));
     await _refresh();
   }
 
@@ -272,8 +272,9 @@ class HomePage extends Page<_HomeData> {
 
   Widget _projectsTab(_HomeData d) {
     final query = _projectSearch.text.trim().toLowerCase();
+    final all = [...d.active, ...d.history];
     final shown = [
-      for (final p in d.active)
+      for (final p in all)
         if ((_statusFilter == null || p.status == _statusFilter) &&
             (query.isEmpty ||
                 p.projectName.toLowerCase().contains(query) ||
@@ -323,11 +324,12 @@ class HomePage extends Page<_HomeData> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              filter('ทั้งหมด ${d.active.length}', null),
+              filter('ทั้งหมด ${all.length}', null),
               for (final s in [
                 ProjectStatus.inProgress,
                 ProjectStatus.pending,
                 ProjectStatus.submitted,
+                ProjectStatus.completed,
               ])
                 filter(_statusStyle(s).label, s),
             ],
@@ -336,8 +338,8 @@ class HomePage extends Page<_HomeData> {
         const SizedBox(height: 20),
         if (shown.isEmpty)
           _emptyCard(
-            d.active.isEmpty ? 'ยังไม่มีโปรเจกต์' : 'ไม่พบโปรเจกต์',
-            d.active.isEmpty
+            all.isEmpty ? 'ยังไม่มีโปรเจกต์' : 'ไม่พบโปรเจกต์',
+            all.isEmpty
                 ? 'กดปุ่ม เพิ่ม Project เพื่อเพิ่มโปรเจกต์แรก'
                 : 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง',
           ),
@@ -376,7 +378,7 @@ class HomePage extends Page<_HomeData> {
         for (final t in d.types) ...[
           _surface(
             padding: const EdgeInsets.all(24),
-            onTap: _loading ? null : () => _editTemplate(t),
+            onTap: _loading ? null : () => _openTemplate(t),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -403,12 +405,6 @@ class HomePage extends Page<_HomeData> {
                       color: _primary,
                       background: _purpleSoft,
                       onTap: _loading ? null : () => _applyTemplate(t, d),
-                    ),
-                    _pill(
-                      'แก้ไข',
-                      color: _muted,
-                      background: _greySoft,
-                      onTap: _loading ? null : () => _editTemplate(t),
                     ),
                   ],
                 ),
@@ -490,7 +486,7 @@ class HomePage extends Page<_HomeData> {
         for (final o in shown) ...[
           _surface(
             padding: const EdgeInsets.all(24),
-            onTap: () => _editOrganizer(o),
+            onTap: () => _openOrganizer(o),
             child: Row(
               children: [
                 _organizerAvatar(o),
@@ -523,7 +519,7 @@ class HomePage extends Page<_HomeData> {
                     ],
                   ),
                 ),
-                const Icon(Icons.edit_outlined, color: _muted),
+                const Icon(Icons.chevron_right_rounded, color: _muted),
               ],
             ),
           ),

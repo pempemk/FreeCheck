@@ -13,9 +13,11 @@ import '../core/app_exception.dart';
 import '../services/database_service.dart';
 import '../widgets/alert.dart';
 
+part 'checklist_detail_page.dart';
 part 'checklist_form_page.dart';
 part 'history_page.dart';
 part 'home_page.dart';
+part 'organizer_detail_page.dart';
 part 'organizer_form_page.dart';
 part 'project_detail_page.dart';
 part 'project_form_page.dart';
