@@ -169,10 +169,11 @@ class DatabaseConnector {
     return ' WHERE ${parts.join(' AND ')}';
   }
 
-  /// SQLite stores booleans as 0/1 and dates as ISO-8601 text.
+  /// SQLite stores booleans as 0/1 and timestamps as ISO-8601 text in whole
+  /// seconds (TIMESTAMP(0)).
   static Object? _value(Object? value) => switch (value) {
     bool() => value ? 1 : 0,
-    DateTime() => value.toIso8601String(),
+    DateTime() => value.toIso8601String().replaceFirst(RegExp(r'\.\d+'), ''),
     _ => value,
   };
 }

@@ -82,6 +82,7 @@ class ChecklistFormPage extends Page<void> {
         _fieldLabel('ประเภทงาน'),
         TextField(
           controller: _name,
+          inputFormatters: [LengthLimitingTextInputFormatter(100)],
           decoration: InputDecoration(
             hintText: 'กรอกประเภทงาน เช่น ออกแบบกราฟิก',
             errorText: fieldErrors['name'],
@@ -132,6 +133,7 @@ class ChecklistFormPage extends Page<void> {
               Expanded(
                 child: TextField(
                   controller: _steps[i].text,
+                  inputFormatters: [LengthLimitingTextInputFormatter(255)],
                   textInputAction: i == _steps.length - 1
                       ? TextInputAction.done
                       : TextInputAction.next,

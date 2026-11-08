@@ -35,8 +35,8 @@ LEFT JOIN (
     final name = textOf(body['project_name']);
     if (name == null) {
       errors['project_name'] = 'กรุณากรอกชื่องาน';
-    } else if (name.length > 255) {
-      errors['project_name'] = 'ชื่องานยาวเกิน 255 ตัวอักษร';
+    } else if (name.length > 200) {
+      errors['project_name'] = 'ชื่องานยาวเกิน 200 ตัวอักษร';
     }
 
     if (textOf(body['org_id']) == null) {
@@ -70,6 +70,8 @@ LEFT JOIN (
       errors['wages'] = 'ค่าจ้างต้องไม่ติดลบ';
     } else if (wages >= 1e10) {
       errors['wages'] = 'ค่าจ้างสูงเกินไป';
+    } else if (wages != num.parse(wages.toStringAsFixed(2))) {
+      errors['wages'] = 'ค่าจ้างมีทศนิยมได้ไม่เกิน 2 ตำแหน่ง';
     }
 
     return errors;
@@ -111,7 +113,8 @@ LEFT JOIN (
     'wages': numOf(body['wages']),
   };
 
-  /// The organizer must exist, and its projects must have distinct names.
+  /// The organizer must exist, and a project name may be used once per
+  /// organizer and start date.
   Future<void> _checkOrganizerAndName(
     Map<String, Object?> data, {
     int? exceptId,
@@ -122,12 +125,12 @@ LEFT JOIN (
     final sameName = await _db.select('projects', {
       'project_name': data['project_name'],
       'org_id': data['org_id'],
+      'start_date': data['start_date'],
     });
     if (sameName.any((p) => p['project_id'] != exceptId)) {
-      throw AppException.conflict(
-        'มีงานชื่อนี้ของ Organizer นี้อยู่แล้ว',
-        fields: {'project_name': 'มีงานชื่อนี้ของ Organizer นี้อยู่แล้ว'},
-      );
+      const message =
+          'มีงานชื่อนี้ของ Organizer นี้ในวันที่เริ่มงานเดียวกันแล้ว';
+      throw AppException.conflict(message, fields: {'project_name': message});
     }
   }
 
@@ -215,7 +218,7 @@ LEFT JOIN (
   Future<List<Project>> getHistory() async {
     final rows = await _db.query(
       '$_projectsWithProgressSql '
-      'WHERE p.status = ? ORDER BY p.paid_at DESC',
+      'WHERE p.status = ? ORDER BY p.paid_at DESC, p.project_id DESC',
       [ProjectStatus.completed.value],
     );
     return _load(rows);

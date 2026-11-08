@@ -25,8 +25,8 @@ class ChecklistController {
     final name = textOf(body['name']);
     if (name == null) {
       errors['name'] = 'กรุณากรอกชื่อประเภทงาน';
-    } else if (name.length > 255) {
-      errors['name'] = 'ชื่อประเภทงานยาวเกิน 255 ตัวอักษร';
+    } else if (name.length > 100) {
+      errors['name'] = 'ชื่อประเภทงานยาวเกิน 100 ตัวอักษร';
     }
 
     final steps = body['steps'];

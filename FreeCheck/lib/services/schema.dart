@@ -1,11 +1,12 @@
 // SQLite schema of the app database, created on first launch.
 //
-// Same tables as the original PostgreSQL design
-// (legacy/migrations/001_init.sql), adapted to SQLite:
-// - SERIAL           -> INTEGER PRIMARY KEY AUTOINCREMENT
-// - DATE / TIMESTAMP -> TEXT (YYYY-MM-DD / ISO-8601 in UTC)
-// - NUMERIC          -> REAL
-// - BOOLEAN          -> INTEGER 0/1
+// Column types follow the project's table structure document. SQLite keeps
+// the declared types but stores values as:
+// - IDENTITY      -> INTEGER PRIMARY KEY AUTOINCREMENT
+// - DATE          -> text YYYY-MM-DD
+// - TIMESTAMP(0)  -> text YYYY-MM-DDTHH:MM:SSZ (UTC, whole seconds)
+// - BOOLEAN       -> 0 / 1
+// Lengths such as VARCHAR(200) are enforced by the controllers' validate.
 
 /// Bump when the schema changes, and add the upgrade steps.
 const schemaVersion = 1;
@@ -23,34 +24,35 @@ CREATE TABLE organizers (
   '''
 CREATE TABLE projects (
   project_id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_name TEXT NOT NULL,
   org_id INTEGER NOT NULL REFERENCES organizers(org_id),
-  start_date TEXT NOT NULL,
-  deadline TEXT,
-  wages REAL NOT NULL,
-  status TEXT NOT NULL DEFAULT 'in_progress'
+  project_name VARCHAR(200) NOT NULL,
+  start_date DATE NOT NULL,
+  deadline DATE DEFAULT NULL,
+  wages NUMERIC(12,2) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'in_progress'
     CHECK (status IN ('in_progress','pending','submitted','completed')),
-  submitted_at TEXT,
-  paid_at TEXT,
+  submitted_at TIMESTAMP(0) DEFAULT NULL,
+  paid_at TIMESTAMP(0) DEFAULT NULL,
   note TEXT NOT NULL DEFAULT '',
-  UNIQUE (project_name, org_id)
+  UNIQUE (project_name, org_id, start_date)
 )''',
   '''
 CREATE TABLE types (
   type_id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
+  name VARCHAR(100) NOT NULL UNIQUE
 )''',
   '''
 CREATE TABLE checklists (
   checklist_id INTEGER PRIMARY KEY AUTOINCREMENT,
   type_id INTEGER NOT NULL REFERENCES types(type_id),
-  name TEXT NOT NULL
+  name VARCHAR(255) NOT NULL
 )''',
   '''
 CREATE TABLE project_checklists (
   project_id INTEGER NOT NULL REFERENCES projects(project_id),
   checklist_id INTEGER NOT NULL REFERENCES checklists(checklist_id),
-  completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+  -- FALSE is written as 0: older Android SQLite has no TRUE/FALSE keywords.
+  completed BOOLEAN NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
   PRIMARY KEY (project_id, checklist_id)
 )''',
   '''
@@ -58,6 +60,6 @@ CREATE TABLE ratings (
   rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id INTEGER NOT NULL UNIQUE REFERENCES projects(project_id),
   org_id INTEGER NOT NULL REFERENCES organizers(org_id),
-  score INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5)
+  score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5)
 )''',
 ];

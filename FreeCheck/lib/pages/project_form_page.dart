@@ -84,6 +84,7 @@ class ProjectFormPage extends Page<List<Organizer>> {
         _fieldLabel('ชื่อโปรเจกต์'),
         TextField(
           controller: _name,
+          inputFormatters: [LengthLimitingTextInputFormatter(200)],
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             hintText: 'กรอกชื่อโปรเจกต์',
