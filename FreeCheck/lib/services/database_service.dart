@@ -17,7 +17,7 @@ class DatabaseService {
   /// the WebAssembly implementation on the web.
   static Future<DatabaseService> open({
     DatabaseFactory? factory,
-    String path = 'freelance_tracker.db',
+    String path = 'freecheck.db',
   }) async {
     final db = await (factory ?? databaseFactory).openDatabase(
       path,

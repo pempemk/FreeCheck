@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:freelance_tracker/controllers/checklist_controller.dart';
-import 'package:freelance_tracker/controllers/organizer_controller.dart';
-import 'package:freelance_tracker/controllers/project_controller.dart';
-import 'package:freelance_tracker/controllers/rating_controller.dart';
-import 'package:freelance_tracker/services/database_service.dart';
-import 'package:freelance_tracker/models/models.dart';
+import 'package:freecheck/controllers/checklist_controller.dart';
+import 'package:freecheck/controllers/organizer_controller.dart';
+import 'package:freecheck/controllers/project_controller.dart';
+import 'package:freecheck/controllers/rating_controller.dart';
+import 'package:freecheck/services/database_service.dart';
+import 'package:freecheck/models/models.dart';
 
 import '../support.dart';
 

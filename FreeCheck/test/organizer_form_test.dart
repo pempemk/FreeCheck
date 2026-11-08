@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' show FilledButton, TextField;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:freelance_tracker/pages/page.dart';
-import 'package:freelance_tracker/services/database_service.dart';
+import 'package:freecheck/pages/page.dart';
+import 'package:freecheck/services/database_service.dart';
 
 import 'seed.dart';
 import 'support.dart';

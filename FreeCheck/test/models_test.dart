@@ -1,4 +1,4 @@
-import 'package:freelance_tracker/models/models.dart';
+import 'package:freecheck/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Project project(ProjectStatus status) => Project(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart'
     show FilledButton, Scrollable, TextButton, TextField;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:freelance_tracker/models/models.dart';
-import 'package:freelance_tracker/pages/page.dart';
-import 'package:freelance_tracker/services/database_service.dart';
+import 'package:freecheck/models/models.dart';
+import 'package:freecheck/pages/page.dart';
+import 'package:freecheck/services/database_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'seed.dart';

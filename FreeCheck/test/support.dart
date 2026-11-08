@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:freelance_tracker/controllers/checklist_controller.dart';
-import 'package:freelance_tracker/core/app_exception.dart';
-import 'package:freelance_tracker/services/database_service.dart';
+import 'package:freecheck/controllers/checklist_controller.dart';
+import 'package:freecheck/core/app_exception.dart';
+import 'package:freecheck/services/database_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// A fresh, empty SQLite database with the app schema.
