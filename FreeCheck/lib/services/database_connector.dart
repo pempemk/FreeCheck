@@ -42,7 +42,7 @@ class DatabaseConnector {
   static final _orderBy = RegExp(r'^[a-z_][a-z0-9_]*( (ASC|DESC))?$');
 
   /// Returns true when at least one row in [table] matches [where].
-  Future<bool> exists(String table, Map<String, Object?> where) async {
+  Future<bool> checkDuplicate(String table, Map<String, Object?> where) async {
     final params = <Object?>[];
     final sql =
         'SELECT EXISTS (SELECT 1 FROM ${_id(table)}'
@@ -53,7 +53,7 @@ class DatabaseConnector {
 
   /// Inserts [data] into [table] and returns the new row's id ([idColumn]
   /// is the table's INTEGER PRIMARY KEY, which SQLite returns as the rowid).
-  Future<int> insert(
+  Future<int> save(
     String table,
     Map<String, Object?> data, {
     String idColumn = 'id',

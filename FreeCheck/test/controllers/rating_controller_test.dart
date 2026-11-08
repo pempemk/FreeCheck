@@ -57,15 +57,15 @@ void main() {
     });
   });
 
-  group('saveRating', () {
+  group('saveReview', () {
     test('saves the rating and sets the organizer average', () async {
       final first = await project('First');
       final second = await project('Second');
 
-      final rating = await controller.saveRating(first, {'score': 5});
+      final rating = await controller.saveReview(first, {'score': 5});
       expect(rating.score, 5);
       expect(rating.orgId, orgId);
-      await controller.saveRating(second, {'score': 4});
+      await controller.saveReview(second, {'score': 4});
 
       final org = await db.select('organizers', {'org_id': orgId});
       expect(org.single['rate'], 4.5);
@@ -74,7 +74,7 @@ void main() {
     test('throws 400 and saves nothing when score is invalid', () async {
       final id = await project('First');
       await expectLater(
-        controller.saveRating(id, {'score': 0}),
+        controller.saveReview(id, {'score': 0}),
         throwsAppException(400, field: 'score'),
       );
       expect(await db.select('ratings', {}), isEmpty);
@@ -82,7 +82,7 @@ void main() {
 
     test('throws 404 for unknown project', () async {
       await expectLater(
-        controller.saveRating(99, {'score': 5}),
+        controller.saveReview(99, {'score': 5}),
         throwsAppException(404),
       );
     });
@@ -90,16 +90,16 @@ void main() {
     test('throws 409 when project is not completed', () async {
       final id = await project('Open', complete: false);
       await expectLater(
-        controller.saveRating(id, {'score': 5}),
+        controller.saveReview(id, {'score': 5}),
         throwsAppException(409),
       );
     });
 
     test('throws 409 when project was already rated', () async {
       final id = await project('First');
-      await controller.saveRating(id, {'score': 5});
+      await controller.saveReview(id, {'score': 5});
       await expectLater(
-        controller.saveRating(id, {'score': 3}),
+        controller.saveReview(id, {'score': 3}),
         throwsAppException(409),
       );
     });

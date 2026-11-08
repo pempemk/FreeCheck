@@ -20,7 +20,7 @@ class RatingController {
   }
 
   /// Saves the rating and recalculates `organizers.rate` in one transaction.
-  Future<Rating> saveRating(int projectId, Map<String, dynamic> body) async {
+  Future<Rating> saveReview(int projectId, Map<String, dynamic> body) async {
     final errors = validate(body);
     if (errors.isNotEmpty) throw AppException.validation(errors);
     final score = body['score'] as int;
@@ -31,14 +31,14 @@ class RatingController {
     if (project['status'] != ProjectStatus.completed.value) {
       throw AppException.conflict('ให้คะแนนได้เฉพาะงานที่เสร็จสิ้นแล้ว');
     }
-    if (await _db.exists('ratings', {'project_id': projectId})) {
+    if (await _db.checkDuplicate('ratings', {'project_id': projectId})) {
       throw AppException.conflict('งานนี้ให้คะแนนไปแล้ว');
     }
 
     final orgId = project['org_id'] as int;
     late int ratingId;
     await _db.transaction((tx) async {
-      ratingId = await tx.insert('ratings', {
+      ratingId = await tx.save('ratings', {
         'project_id': projectId,
         'org_id': orgId,
         'score': score,

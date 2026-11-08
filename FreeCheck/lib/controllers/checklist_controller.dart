@@ -54,7 +54,7 @@ class ChecklistController {
     final name = textOf(body['name'])!;
     final steps = [for (final s in body['steps'] as List) textOf(s)!];
 
-    if (await _db.exists('types', {'name': name})) {
+    if (await _db.checkDuplicate('types', {'name': name})) {
       throw AppException.conflict(
         'มีประเภทงานชื่อนี้อยู่แล้ว',
         fields: {'name': 'มีประเภทงานชื่อนี้อยู่แล้ว'},
@@ -64,9 +64,9 @@ class ChecklistController {
     late int typeId;
     final created = <Checklist>[];
     await _db.transaction((tx) async {
-      typeId = await tx.insert('types', {'name': name}, idColumn: 'type_id');
+      typeId = await tx.save('types', {'name': name}, idColumn: 'type_id');
       for (final step in steps) {
-        final id = await tx.insert('checklists', {
+        final id = await tx.save('checklists', {
           'type_id': typeId,
           'name': step,
         }, idColumn: 'checklist_id');
@@ -83,7 +83,7 @@ class ChecklistController {
     final errors = validate(body);
     if (errors.isNotEmpty) throw AppException.validation(errors);
 
-    if (!await _db.exists('types', {'type_id': typeId})) {
+    if (!await _db.checkDuplicate('types', {'type_id': typeId})) {
       throw AppException.notFound('ไม่พบประเภทงานนี้');
     }
     final name = textOf(body['name'])!;
@@ -108,7 +108,7 @@ class ChecklistController {
     ];
     final kept = {for (final step in steps) step.id};
     for (final id in current.keys.where((id) => !kept.contains(id))) {
-      if (await _db.exists('project_checklists', {'checklist_id': id})) {
+      if (await _db.checkDuplicate('project_checklists', {'checklist_id': id})) {
         throw AppException.conflict(
           'ลบขั้นตอน "${current[id]}" ไม่ได้ เพราะมีโปรเจกต์ใช้อยู่',
           fields: {
@@ -128,7 +128,7 @@ class ChecklistController {
             {'name': step.name},
           );
         } else {
-          await tx.insert('checklists', {
+          await tx.save('checklists', {
             'type_id': typeId,
             'name': step.name,
           }, idColumn: 'checklist_id');
@@ -147,7 +147,7 @@ class ChecklistController {
 
   /// Deletes a checklist type and its steps when no project uses them.
   Future<void> deleteChecklist(int typeId) async {
-    if (!await _db.exists('types', {'type_id': typeId})) {
+    if (!await _db.checkDuplicate('types', {'type_id': typeId})) {
       throw AppException.notFound('ไม่พบประเภทงานนี้');
     }
     final steps = await _db.select(
@@ -157,7 +157,7 @@ class ChecklistController {
     );
     final ids = [for (final s in steps) s['checklist_id']];
     if (ids.isNotEmpty &&
-        await _db.exists('project_checklists', {'checklist_id': ids})) {
+        await _db.checkDuplicate('project_checklists', {'checklist_id': ids})) {
       throw AppException.conflict(
         'มีโปรเจกต์ใช้ Checklist นี้อยู่ ต้องเอาออกจากโปรเจกต์ก่อน',
       );
@@ -198,10 +198,10 @@ class ChecklistController {
     }
 
     await _requireOpenProject(projectId);
-    if (!await _db.exists('types', {'type_id': typeId})) {
+    if (!await _db.checkDuplicate('types', {'type_id': typeId})) {
       throw AppException.notFound('ไม่พบประเภทงานนี้');
     }
-    if (await _db.exists('project_checklists', {'project_id': projectId})) {
+    if (await _db.checkDuplicate('project_checklists', {'project_id': projectId})) {
       throw AppException.conflict(
         'โปรเจกต์นี้มี Checklist แล้ว ต้องเอาอันเดิมออกก่อน',
       );
@@ -214,7 +214,7 @@ class ChecklistController {
     );
     await _db.transaction((tx) async {
       for (final step in steps) {
-        await tx.insert('project_checklists', {
+        await tx.save('project_checklists', {
           'project_id': projectId,
           'checklist_id': step['checklist_id'],
           'completed': false,
@@ -245,14 +245,14 @@ class ChecklistController {
       'project_id': projectId,
       'checklist_id': [for (final s in steps) s['checklist_id']],
     };
-    if (steps.isEmpty || !await _db.exists('project_checklists', where)) {
+    if (steps.isEmpty || !await _db.checkDuplicate('project_checklists', where)) {
       throw AppException.notFound('งานนี้ไม่มี Checklist ประเภทนี้');
     }
     await _db.delete('project_checklists', where);
   }
 
   Future<List<ProjectChecklist>> getProjectChecklists(int projectId) async {
-    if (!await _db.exists('projects', {'project_id': projectId})) {
+    if (!await _db.checkDuplicate('projects', {'project_id': projectId})) {
       throw AppException.notFound('ไม่พบงานนี้');
     }
     final rows = await _db.select('project_checklists', {
@@ -286,7 +286,7 @@ class ChecklistController {
       });
     }
     final key = {'project_id': projectId, 'checklist_id': checklistId};
-    if (!await _db.exists('project_checklists', key)) {
+    if (!await _db.checkDuplicate('project_checklists', key)) {
       throw AppException.notFound('ไม่พบขั้นตอนนี้ในงาน');
     }
     await _db.update('project_checklists', key, {'completed': completed});

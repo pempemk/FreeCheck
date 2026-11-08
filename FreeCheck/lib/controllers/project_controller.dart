@@ -83,7 +83,7 @@ LEFT JOIN (
 
     final data = _fields(body);
     await _checkOrganizerAndName(data);
-    final id = await _db.insert('projects', {
+    final id = await _db.save('projects', {
       ...data,
       'status': ProjectStatus.inProgress.value,
     }, idColumn: 'project_id');
@@ -119,7 +119,7 @@ LEFT JOIN (
     Map<String, Object?> data, {
     int? exceptId,
   }) async {
-    if (!await _db.exists('organizers', {'org_id': data['org_id']})) {
+    if (!await _db.checkDuplicate('organizers', {'org_id': data['org_id']})) {
       throw AppException.validation({'org_id': 'ไม่พบ Organizer ที่เลือก'});
     }
     final sameName = await _db.select('projects', {
@@ -199,7 +199,7 @@ LEFT JOIN (
     if (note is! String) {
       throw AppException.validation({'note': 'กรุณากรอกบันทึก'});
     }
-    if (!await _db.exists('projects', {'project_id': id})) {
+    if (!await _db.checkDuplicate('projects', {'project_id': id})) {
       throw AppException.notFound('ไม่พบงานนี้');
     }
     await _db.update('projects', {'project_id': id}, {'note': note.trim()});

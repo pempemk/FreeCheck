@@ -240,7 +240,7 @@ abstract class Page<D> extends State<StatefulWidget> {
     );
     if (score == null) return false;
     final rating = await _run(
-      () => _ratings.saveRating(project.projectId, {'score': score}),
+      () => _ratings.saveReview(project.projectId, {'score': score}),
       success: 'บันทึกการประเมินเรียบร้อยแล้ว',
     );
     return rating != null;

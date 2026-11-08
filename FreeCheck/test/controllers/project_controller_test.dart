@@ -214,7 +214,7 @@ void main() {
 
     final first = await complete('First');
     await complete('Second');
-    await RatingController(db).saveRating(first, {'score': 4});
+    await RatingController(db).saveReview(first, {'score': 4});
 
     final history = await controller.getHistory();
     expect([for (final p in history) p.projectName], ['Second', 'First']);
@@ -329,7 +329,7 @@ void main() {
         await controller.submitProject(id);
         await controller.passProject(id);
         await controller.confirmPayment(id);
-        await RatingController(db).saveRating(id, {'score': score});
+        await RatingController(db).saveReview(id, {'score': score});
         return id;
       }
 

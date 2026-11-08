@@ -53,7 +53,7 @@ class OrganizerController {
     if (errors.isNotEmpty) throw AppException.validation(errors);
 
     final orgName = textOf(body['org_name'])!;
-    if (await _db.exists('organizers', {'org_name': orgName})) {
+    if (await _db.checkDuplicate('organizers', {'org_name': orgName})) {
       throw AppException.conflict(
         'มี Organizer ชื่อนี้อยู่แล้ว',
         fields: {'org_name': 'มี Organizer ชื่อนี้อยู่แล้ว'},
@@ -67,7 +67,7 @@ class OrganizerController {
       color: textOf(body['color'])!.toUpperCase(),
     );
     final data = organizer.toJson()..remove('org_id');
-    final id = await _db.insert('organizers', data, idColumn: 'org_id');
+    final id = await _db.save('organizers', data, idColumn: 'org_id');
     return Organizer.fromJson({...data, 'org_id': id});
   }
 
@@ -104,10 +104,10 @@ class OrganizerController {
 
   /// Deletes an organizer that has no projects.
   Future<void> deleteOrganizer(int id) async {
-    if (!await _db.exists('organizers', {'org_id': id})) {
+    if (!await _db.checkDuplicate('organizers', {'org_id': id})) {
       throw AppException.notFound('ไม่พบ Organizer นี้');
     }
-    if (await _db.exists('projects', {'org_id': id})) {
+    if (await _db.checkDuplicate('projects', {'org_id': id})) {
       throw AppException.conflict(
         'Organizer นี้ยังมีโปรเจกต์อยู่ ต้องลบโปรเจกต์ก่อน',
       );
