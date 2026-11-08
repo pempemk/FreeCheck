@@ -104,6 +104,7 @@ class OrganizerFormPage extends Page<void> {
         TextField(
           controller: _orgName,
           textInputAction: TextInputAction.next,
+          inputFormatters: [LengthLimitingTextInputFormatter(150)],
           decoration: InputDecoration(
             hintText: 'กรอกชื่อบริษัท / Organizer',
             errorText: fieldErrors['org_name'],
@@ -114,6 +115,7 @@ class OrganizerFormPage extends Page<void> {
         TextField(
           controller: _contactName,
           textInputAction: TextInputAction.next,
+          inputFormatters: [LengthLimitingTextInputFormatter(100)],
           decoration: InputDecoration(
             hintText: 'กรอกชื่อผู้ติดต่อ',
             errorText: fieldErrors['contact_name'],

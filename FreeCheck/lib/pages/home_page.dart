@@ -510,7 +510,7 @@ class HomePage extends Page<_HomeData> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '★ ${o.rate.toStringAsFixed(1)}',
+                        '★ ${o.rate.toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: _orange,
                           fontWeight: FontWeight.w600,

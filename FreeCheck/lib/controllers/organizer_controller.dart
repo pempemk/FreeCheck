@@ -15,8 +15,8 @@ class OrganizerController {
     final orgName = textOf(body['org_name']);
     if (orgName == null) {
       errors['org_name'] = 'กรุณากรอกชื่อ Organizer';
-    } else if (orgName.length > 255) {
-      errors['org_name'] = 'ชื่อ Organizer ยาวเกิน 255 ตัวอักษร';
+    } else if (orgName.length > 150) {
+      errors['org_name'] = 'ชื่อ Organizer ยาวเกิน 150 ตัวอักษร';
     }
 
     final contactName = textOf(body['contact_name']);
@@ -25,8 +25,8 @@ class OrganizerController {
     } else if (!thaiOrEnglishPattern.hasMatch(contactName)) {
       errors['contact_name'] =
           'ชื่อผู้ติดต่อต้องเป็นอักษรไทยหรืออังกฤษเท่านั้น';
-    } else if (contactName.length > 255) {
-      errors['contact_name'] = 'ชื่อผู้ติดต่อยาวเกิน 255 ตัวอักษร';
+    } else if (contactName.length > 100) {
+      errors['contact_name'] = 'ชื่อผู้ติดต่อยาวเกิน 100 ตัวอักษร';
     }
 
     final phone = textOf(body['phone']);

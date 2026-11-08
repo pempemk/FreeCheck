@@ -14,11 +14,11 @@ const schema = [
   '''
 CREATE TABLE organizers (
   org_id INTEGER PRIMARY KEY AUTOINCREMENT,
-  org_name TEXT NOT NULL UNIQUE,
-  contact_name TEXT NOT NULL,
-  phone TEXT,
-  color TEXT NOT NULL,              -- hex เช่น #FF5733
-  rate REAL NOT NULL DEFAULT 0
+  org_name VARCHAR(150) NOT NULL UNIQUE,
+  contact_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  color CHAR(7) NOT NULL,           -- hex เช่น #FF5733
+  rate NUMERIC(3,2) NOT NULL DEFAULT 0
 )''',
   '''
 CREATE TABLE projects (

@@ -147,7 +147,7 @@ LEFT JOIN (
         {'org_id': orgId},
         columns: ['COALESCE(AVG(score), 0) AS avg_score'],
       );
-      final rate = (avg.first['avg_score'] as num).toStringAsFixed(1);
+      final rate = (avg.first['avg_score'] as num).toStringAsFixed(2);
       await tx.update(
         'organizers',
         {'org_id': orgId},

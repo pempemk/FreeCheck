@@ -102,7 +102,7 @@ class OrganizerDetailPage extends Page<_OrganizerDetail> {
                         _stars(o.rate, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          o.rate.toStringAsFixed(1),
+                          o.rate.toStringAsFixed(2),
                           style: const TextStyle(
                             color: _orange,
                             fontWeight: FontWeight.w600,

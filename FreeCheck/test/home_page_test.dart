@@ -72,7 +72,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nova Events'), findsOneWidget);
     expect(find.text('ศิริพร • 081-234-5678'), findsOneWidget);
-    expect(find.text('★ 0.0'), findsOneWidget);
+    expect(find.text('★ 0.00'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
