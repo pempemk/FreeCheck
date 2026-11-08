@@ -1,12 +1,12 @@
 import '../core/app_exception.dart';
 import '../core/validators.dart';
-import '../services/database_service.dart';
+import '../services/database_connector.dart';
 import '../models/models.dart';
 
 class ChecklistController {
   ChecklistController(this._db);
 
-  final DatabaseService _db;
+  final DatabaseConnector _db;
 
   /// Percentage of a project's steps that are completed (0 when none).
   /// `completed` is 0/1, so SUM(completed) counts the completed steps.

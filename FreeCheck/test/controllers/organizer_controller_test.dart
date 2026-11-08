@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freecheck/controllers/organizer_controller.dart';
 import 'package:freecheck/controllers/project_controller.dart';
-import 'package:freecheck/services/database_service.dart';
+import 'package:freecheck/services/database_connector.dart';
 
 import '../support.dart';
 
 void main() {
-  late DatabaseService db;
+  late DatabaseConnector db;
   late OrganizerController controller;
 
   final valid = {

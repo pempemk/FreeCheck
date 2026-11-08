@@ -10,7 +10,7 @@ import '../controllers/organizer_controller.dart';
 import '../controllers/project_controller.dart';
 import '../controllers/rating_controller.dart';
 import '../core/app_exception.dart';
-import '../services/database_service.dart';
+import '../services/database_connector.dart';
 import '../widgets/alert.dart';
 
 part 'checklist_detail_page.dart';
@@ -31,7 +31,7 @@ const checklistFormRoute = '/types/new';
 const _unexpectedError = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
 
 /// The whole app, sharing one open [db] between all pages.
-Widget buildApp(DatabaseService db) => MaterialApp(
+Widget buildApp(DatabaseConnector db) => MaterialApp(
   title: 'FreeCheck',
   debugShowCheckedModeBanner: false,
   theme: appTheme(),
@@ -63,10 +63,10 @@ class _PageHost extends StatefulWidget {
 
 /// Base class of every screen. [D] is the data the screen shows.
 abstract class Page<D> extends State<StatefulWidget> {
-  Page({required DatabaseService db}) : _db = db;
+  Page({required DatabaseConnector db}) : _db = db;
 
   /// Shared by every page; opened once in `main`.
-  final DatabaseService _db;
+  final DatabaseConnector _db;
   late final _organizers = OrganizerController(_db);
   late final _projects = ProjectController(_db);
   late final _checklists = ChecklistController(_db);

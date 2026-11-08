@@ -8,14 +8,14 @@ import 'schema.dart';
 /// connection stays open. Every statement is built from identifiers that
 /// are checked against a whitelist pattern, and every value is sent as a
 /// parameter (`?`). Values are never concatenated into SQL text.
-class DatabaseService {
-  DatabaseService(this._executor);
+class DatabaseConnector {
+  DatabaseConnector(this._executor);
 
   /// Opens (and on first launch creates) the database at [path].
   ///
   /// [factory] defaults to sqflite's global factory, which `main` points at
   /// the WebAssembly implementation on the web.
-  static Future<DatabaseService> open({
+  static Future<DatabaseConnector> open({
     DatabaseFactory? factory,
     String path = 'freecheck.db',
   }) async {
@@ -31,7 +31,7 @@ class DatabaseService {
         },
       ),
     );
-    return DatabaseService(db);
+    return DatabaseConnector(db);
   }
 
   /// The [Database] for the shared instance, or a [Transaction] for
@@ -132,17 +132,17 @@ class DatabaseService {
     );
   }
 
-  /// Runs [action] inside one transaction. The [DatabaseService] passed to
+  /// Runs [action] inside one transaction. The [DatabaseConnector] passed to
   /// [action] must be used for every statement that belongs to it.
   Future<void> transaction(
-    Future<void> Function(DatabaseService tx) action,
+    Future<void> Function(DatabaseConnector tx) action,
   ) async {
     final executor = _executor;
     if (executor is! Database) {
       // Already inside a transaction.
       return action(this);
     }
-    await executor.transaction((txn) => action(DatabaseService(txn)));
+    await executor.transaction((txn) => action(DatabaseConnector(txn)));
   }
 
   String _id(String name) {

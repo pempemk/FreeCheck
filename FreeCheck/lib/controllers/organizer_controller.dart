@@ -1,12 +1,12 @@
 import '../core/app_exception.dart';
 import '../core/validators.dart';
-import '../services/database_service.dart';
+import '../services/database_connector.dart';
 import '../models/models.dart';
 
 class OrganizerController {
   OrganizerController(this._db);
 
-  final DatabaseService _db;
+  final DatabaseConnector _db;
 
   /// Returns field errors for an organizer body; empty when valid.
   Map<String, String> validate(Map<String, dynamic> body) {

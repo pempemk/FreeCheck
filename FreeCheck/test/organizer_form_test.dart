@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart' show FilledButton, TextField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freecheck/pages/page.dart';
-import 'package:freecheck/services/database_service.dart';
+import 'package:freecheck/services/database_connector.dart';
 
 import 'seed.dart';
 import 'support.dart';
 
 void main() {
-  late DatabaseService db;
+  late DatabaseConnector db;
 
   setUp(() async => db = await openTestDb());
 

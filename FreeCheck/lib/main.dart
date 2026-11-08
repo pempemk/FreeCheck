@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'pages/page.dart';
-import 'services/database_service.dart';
+import 'services/database_connector.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +15,6 @@ Future<void> main() async {
   await initializeDateFormatting('th');
 
   // Opened once; every page and controller shares this connection.
-  final db = await DatabaseService.open();
+  final db = await DatabaseConnector.open();
   runApp(buildApp(db));
 }

@@ -1,11 +1,11 @@
 import '../core/app_exception.dart';
-import '../services/database_service.dart';
+import '../services/database_connector.dart';
 import '../models/models.dart';
 
 class RatingController {
   RatingController(this._db);
 
-  final DatabaseService _db;
+  final DatabaseConnector _db;
 
   /// Returns field errors for a rating body; empty when valid.
   Map<String, String> validate(Map<String, dynamic> body) {

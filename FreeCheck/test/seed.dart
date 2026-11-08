@@ -4,7 +4,7 @@ import 'package:freecheck/controllers/checklist_controller.dart';
 import 'package:freecheck/controllers/organizer_controller.dart';
 import 'package:freecheck/controllers/project_controller.dart';
 import 'package:freecheck/pages/page.dart';
-import 'package:freecheck/services/database_service.dart';
+import 'package:freecheck/services/database_connector.dart';
 
 import 'support.dart';
 
@@ -15,7 +15,7 @@ class Seed {
       projects = ProjectController(db),
       checklists = ChecklistController(db);
 
-  final DatabaseService db;
+  final DatabaseConnector db;
   final OrganizerController organizers;
   final ProjectController projects;
   final ChecklistController checklists;

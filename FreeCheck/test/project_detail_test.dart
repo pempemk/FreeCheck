@@ -3,7 +3,7 @@ import 'package:flutter/material.dart'
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freecheck/models/models.dart';
 import 'package:freecheck/pages/page.dart';
-import 'package:freecheck/services/database_service.dart';
+import 'package:freecheck/services/database_connector.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'seed.dart';
@@ -15,7 +15,7 @@ final _page = find.byType(Scrollable).first;
 Finder _filled(String label) => find.widgetWithText(FilledButton, label);
 
 void main() {
-  late DatabaseService db;
+  late DatabaseConnector db;
   late Seed seed;
   late int orgId;
   late int typeId;

@@ -1,12 +1,12 @@
 import '../core/app_exception.dart';
 import '../core/validators.dart';
-import '../services/database_service.dart';
+import '../services/database_connector.dart';
 import '../models/models.dart';
 
 class ProjectController {
   ProjectController(this._db);
 
-  final DatabaseService _db;
+  final DatabaseConnector _db;
 
   /// Projects with `progress_percent`, using the same expression as
   /// ChecklistController.getProgress (0 for projects without steps).
